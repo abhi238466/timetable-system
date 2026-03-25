@@ -38,13 +38,14 @@ function StudentDashboard() {
     }
   }, [message]);
 
-  // 🔥 FILTERED LIST
+  // 🔥 FILTER COURSES
   const filteredCourses = courses.filter(c =>
-    !selectedDept || c.department?.name === selectedDept || c.department === selectedDept
+    !selectedDept || c.department?.name === selectedDept
   );
 
+  // 🔥 FILTER SECTIONS
   const filteredSections = sections.filter(s =>
-    (!selectedCourse || s.course?.name === selectedCourse || s.course === selectedCourse)
+    !selectedCourse || s.course?.name === selectedCourse
   );
 
   // 🔥 FETCH TIMETABLE (ONLY MY SECTION)
@@ -59,9 +60,9 @@ function StudentDashboard() {
       const res = await fetch("http://localhost:5000/api/timetable");
       const data = await res.json();
 
-      // 🔥 ONLY MY SECTION FILTER
+      // ✅ CORRECT FILTER (MAIN FIX)
       const filtered = data.filter(item =>
-        item.subject?.sections?.some(sec => sec.name === selectedSection)
+        item.sections?.some(sec => sec.name === selectedSection)
       );
 
       if (filtered.length === 0) {
@@ -96,6 +97,7 @@ function StudentDashboard() {
       {message && (
         <div style={{
           background: message.includes("❌") ? "#fee2e2" : "#dcfce7",
+          color: message.includes("❌") ? "#b91c1c" : "#166534",
           padding: "10px",
           borderRadius: "8px",
           marginBottom: "10px"
@@ -104,7 +106,7 @@ function StudentDashboard() {
         </div>
       )}
 
-      {/* FILTER */}
+      {/* FILTER CARD */}
       <div style={card}>
 
         {/* DEPARTMENT */}
@@ -114,6 +116,7 @@ function StudentDashboard() {
             setSelectedDept(e.target.value);
             setSelectedCourse("");
             setSelectedSection("");
+            setTimetable([]);
           }}
           style={input}
         >
@@ -129,6 +132,7 @@ function StudentDashboard() {
           onChange={(e) => {
             setSelectedCourse(e.target.value);
             setSelectedSection("");
+            setTimetable([]);
           }}
           style={input}
         >
@@ -141,7 +145,10 @@ function StudentDashboard() {
         {/* SECTION */}
         <select
           value={selectedSection}
-          onChange={(e) => setSelectedSection(e.target.value)}
+          onChange={(e) => {
+            setSelectedSection(e.target.value);
+            setTimetable([]);
+          }}
           style={input}
         >
           <option value="">📗 Select Section</option>
@@ -158,36 +165,41 @@ function StudentDashboard() {
 
       </div>
 
-      {/* TIMETABLE */}
-      <div>
-        {timetable.length > 0 && (
-          <table style={table}>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Time</th>
-                <th>Subject</th>
-                <th>Teacher</th>
-                <th>Room</th>
-              </tr>
-            </thead>
+      {/* TIMETABLE TABLE */}
+      {timetable.length > 0 && (
+        <table style={table}>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Time</th>
+              <th>Subject</th>
+              <th>Teacher</th>
+              <th>Room</th>
+            </tr>
+          </thead>
 
-            <tbody>
-              {timetable.map((item, i) => (
-                <tr key={i}>
-                  <td>{item.timeslot?.day}</td>
-                  <td>
-                    {item.timeslot?.startTime} - {item.timeslot?.endTime}
-                  </td>
-                  <td>{item.subject?.name}</td>
-                  <td>{item.teacher?.name}</td>
-                  <td>{item.room?.name}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+          <tbody>
+            {timetable.map((item, i) => (
+              <tr key={i}>
+                <td>{item.timeslot?.day}</td>
+                <td>
+                  {item.timeslot?.startTime} - {item.timeslot?.endTime}
+                </td>
+                <td>{item.subject?.name}</td>
+                <td>{item.teacher?.name}</td>
+                <td>{item.room?.name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {/* EMPTY STATE */}
+      {timetable.length === 0 && (
+        <div style={empty}>
+          📭 No timetable to display
+        </div>
+      )}
 
     </div>
   );
@@ -224,6 +236,12 @@ const table = {
   width: "100%",
   borderCollapse: "collapse",
   background: "white"
+};
+
+const empty = {
+  textAlign: "center",
+  padding: "20px",
+  color: "#64748b"
 };
 
 export default StudentDashboard;

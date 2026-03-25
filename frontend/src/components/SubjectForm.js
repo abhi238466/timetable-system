@@ -35,13 +35,16 @@ function SubjectForm() {
     fetchData();
   }, []);
 
-  // 🔥 MULTI SELECT HANDLER
-  const handleMultiSelect = (e, setter) => {
-    const values = Array.from(e.target.selectedOptions, option => option.value);
-    setter(values);
+  // ✅ CHECKBOX HANDLER
+  const handleCheckbox = (id, selected, setter) => {
+    if (selected.includes(id)) {
+      setter(selected.filter(item => item !== id));
+    } else {
+      setter([...selected, id]);
+    }
   };
 
-  // 🔥 ADD SUBJECT (FIXED)
+  // 🔥 ADD SUBJECT
   const addSubject = async () => {
 
     setMessage("");
@@ -83,7 +86,6 @@ function SubjectForm() {
       } else {
         setMessage("✅ Subject added successfully");
 
-        // RESET
         setName("");
         setType("theory");
         setWeeklyFrequency("");
@@ -112,12 +114,12 @@ function SubjectForm() {
 
       <h2>📚 Subject Management</h2>
 
-      {/* 🔥 MESSAGE */}
+      {/* MESSAGE */}
       {message && (
         <div className="msg-box">{message}</div>
       )}
 
-      {/* 🔥 FORM */}
+      {/* FORM */}
       <div className="card">
 
         <input
@@ -144,35 +146,51 @@ function SubjectForm() {
           className="input"
         />
 
-        <label className="small-text">Select Teachers</label>
-        <select
-          multiple
-          value={selectedTeachers}
-          onChange={(e) => handleMultiSelect(e, setSelectedTeachers)}
-          className="input"
-        >
-          {teachers.map(t => (
-            <option key={t._id} value={t._id}>{t.name}</option>
-          ))}
-        </select>
+        {/* 🔥 TEACHERS BOX */}
+        <div className="checkbox-container">
+          <label className="checkbox-title">👨‍🏫 Select Teachers</label>
 
-        <label className="small-text">Select Sections</label>
-        <select
-          multiple
-          value={selectedSections}
-          onChange={(e) => handleMultiSelect(e, setSelectedSections)}
-          className="input"
-        >
-          {sections.map(s => (
-            <option key={s._id} value={s._id}>{s.name}</option>
-          ))}
-        </select>
+          <div className="checkbox-group">
+            {teachers.map(t => (
+              <label key={t._id} className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={selectedTeachers.includes(t._id)}
+                  onChange={() =>
+                    handleCheckbox(t._id, selectedTeachers, setSelectedTeachers)
+                  }
+                />
+                <span>{t.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* 🔥 SECTIONS BOX */}
+        <div className="checkbox-container">
+          <label className="checkbox-title">🎓 Select Sections</label>
+
+          <div className="checkbox-group">
+            {sections.map(s => (
+              <label key={s._id} className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={selectedSections.includes(s._id)}
+                  onChange={() =>
+                    handleCheckbox(s._id, selectedSections, setSelectedSections)
+                  }
+                />
+                <span>{s.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <button onClick={addSubject}>Add Subject</button>
 
       </div>
 
-      {/* 🔥 LIST */}
+      {/* LIST */}
       <div className="grid">
 
         {subjects.length === 0 ? (
@@ -208,7 +226,6 @@ function SubjectForm() {
       </div>
 
     </div>
-
   );
 }
 

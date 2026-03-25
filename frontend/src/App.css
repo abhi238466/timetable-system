@@ -146,6 +146,8 @@ input:focus, select:focus {
   color: #475569;
 }
 
+
+
 /* 🔥 PRINT MODE */
 @media print {
   button {
@@ -160,4 +162,36 @@ input:focus, select:focus {
     box-shadow: none;
     border: 1px solid #ccc;
   }
+}
+
+/* 🔥 SUBJECT FORM FIX (SAFE OVERRIDE) */
+
+.card {
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.checkbox-group {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+  background: #f9fafb;
+}
+
+.checkbox-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px;
+}
+
+.checkbox-item input {
+  width: 16px;
+  height: 16px;
+}
+
+.checkbox-item span {
+  flex: unset !important;
 }

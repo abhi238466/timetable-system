@@ -9,7 +9,7 @@ function TimetableGrid() {
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
 
-  // 🔥 FETCH DATA (SAFE)
+  // 🔥 FETCH DATA
   useEffect(() => {
     fetch("http://localhost:5000/api/timetable")
       .then(res => res.json())
@@ -22,24 +22,29 @@ function TimetableGrid() {
       });
   }, []);
 
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  // 🔥 DAYS
+  const days = [
+    ...new Set(data.map(item => item.timeslot?.day))
+  ].filter(Boolean);
 
-  // 🔥 TIME SLOTS
-  const times = [...new Set(
-    data.map(item =>
-      item.timeslot
-        ? item.timeslot.startTime + "-" + item.timeslot.endTime
-        : ""
-    )
-  )].filter(Boolean);
-
-  // 🔥 UNIQUE FILTERS (FIXED)
-  const uniqueSections = [
+  // 🔥 TIME
+  const times = [
     ...new Set(
-      data.flatMap(item =>
-        item.sections?.map(sec => sec.name) || []
+      data.map(item =>
+        item.timeslot
+          ? item.timeslot.startTime + "-" + item.timeslot.endTime
+          : ""
       )
     )
+  ].filter(Boolean);
+
+  // 🔥 UNIQUE SECTIONS
+  const uniqueSections = [
+    ...new Map(
+      data.flatMap(item =>
+        item.sections?.map(sec => [sec._id, sec]) || []
+      )
+    ).values()
   ];
 
   const uniqueTeachers = [
@@ -50,11 +55,18 @@ function TimetableGrid() {
     )
   ];
 
+  // 🔥 FIX ROOM (MULTIPLE ROOMS SUPPORT)
   const uniqueRooms = [
-    ...new Set(data.map(item => item.room?.name))
-  ];
+    ...new Set(
+      data.flatMap(item =>
+        Array.isArray(item.room)
+          ? item.room.map(r => r.name)
+          : [item.room?.name]
+      )
+    )
+  ].filter(Boolean);
 
-  // 🔥 FILTER LOGIC (FIXED)
+  // 🔥 CELL DATA (FINAL FIX)
   const getCellData = (day, time) => {
     return data.filter(item => {
 
@@ -64,20 +76,27 @@ function TimetableGrid() {
         item.timeslot.day === day &&
         (item.timeslot.startTime + "-" + item.timeslot.endTime) === time;
 
+      // ✅ SECTION FIX
       const matchSection =
         !selectedSection ||
-        item.sections?.some(sec => sec.name === selectedSection);
+        (item.sections || []).some(sec =>
+          sec._id === selectedSection
+        );
 
       const matchTeacher =
         !selectedTeacher ||
         item.teacher?.some(t => t.name === selectedTeacher);
 
+      // ✅ ROOM FIX (MULTIPLE ROOMS)
       const matchRoom =
         !selectedRoom ||
-        item.room?.name === selectedRoom;
+        (
+          Array.isArray(item.room)
+            ? item.room.some(r => r.name === selectedRoom)
+            : item.room?.name === selectedRoom
+        );
 
       return matchDayTime && matchSection && matchTeacher && matchRoom;
-
     });
   };
 
@@ -87,20 +106,36 @@ function TimetableGrid() {
 
       <h2>📅 Timetable</h2>
 
-      {/* 🔥 FILTER BAR */}
+      {/* 🔥 FILTER */}
       <div className="card" style={{ marginBottom: "20px" }}>
 
-        <select className="input" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
+        <select
+          className="input"
+          value={selectedSection}
+          onChange={(e) => setSelectedSection(e.target.value)}
+        >
           <option value="">All Sections</option>
-          {uniqueSections.map(sec => <option key={sec}>{sec}</option>)}
+          {uniqueSections.map(sec => (
+            <option key={sec._id} value={sec._id}>
+              {sec.name}
+            </option>
+          ))}
         </select>
 
-        <select className="input" value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)}>
+        <select
+          className="input"
+          value={selectedTeacher}
+          onChange={(e) => setSelectedTeacher(e.target.value)}
+        >
           <option value="">All Teachers</option>
           {uniqueTeachers.map(t => <option key={t}>{t}</option>)}
         </select>
 
-        <select className="input" value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)}>
+        <select
+          className="input"
+          value={selectedRoom}
+          onChange={(e) => setSelectedRoom(e.target.value)}
+        >
           <option value="">All Rooms</option>
           {uniqueRooms.map(r => <option key={r}>{r}</option>)}
         </select>
@@ -144,44 +179,46 @@ function TimetableGrid() {
                 return (
                   <td key={day}>
 
-                    {cellData.length === 0 ? "-" : cellData.map((item, i) => (
+                    {cellData.length === 0
+                      ? "-"
+                      : cellData.map((item, i) => (
 
-                      <div
-                        key={i}
-                        className="card"
-                        style={{
-                          marginBottom: "10px",
-                          borderLeft:
-                            item.subject?.type === "lab"
-                              ? "5px solid orange"
-                              : "5px solid #2563eb"
-                        }}
-                      >
+                        <div
+                          key={i}
+                          className="card"
+                          style={{
+                            marginBottom: "10px",
+                            borderLeft:
+                              item.subject?.type === "lab"
+                                ? "5px solid orange"
+                                : "5px solid #2563eb"
+                          }}
+                        >
 
-                        {/* SUBJECT */}
-                        <div style={{ fontWeight: "bold" }}>
-                          {item.subject?.name}
+                          <div style={{ fontWeight: "bold" }}>
+                            {item.subject?.name}
+                          </div>
+
+                          <div style={{ color: "green", fontSize: "13px" }}>
+                            🎓 {item.sections?.map(sec => sec.name).join(", ")}
+                          </div>
+
+                          <div className="small-text">
+                            👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}
+                          </div>
+
+                          {/* ✅ MULTI ROOM DISPLAY */}
+                          <div className="small-text">
+                            🏫 {
+                              Array.isArray(item.room)
+                                ? item.room.map(r => r.name).join(", ")
+                                : item.room?.name
+                            }
+                          </div>
+
                         </div>
 
-                        {/* SECTION (FIXED) */}
-                        <div style={{ color: "green", fontSize: "13px" }}>
-                          🎓 {item.sections?.map(sec => sec.name).join(", ")}
-                        </div>
-
-                        {/* TEACHER (FIXED) */}
-                        <div className="small-text">
-                          👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}
-                        </div>
-
-                        {/* ROOM */}
-                        <div className="small-text">
-                          🏫 {item.room?.name}
-                        </div>
-
-                      </div>
-
-                    ))}
-
+                      ))}
                   </td>
                 );
 
@@ -195,7 +232,6 @@ function TimetableGrid() {
       </table>
 
     </div>
-
   );
 }
 

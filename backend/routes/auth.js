@@ -8,7 +8,8 @@ let otpStore = {};
 // 🔥 ALLOWED ADMINS (IMPORTANT)
 const ALLOWED_ADMINS = [
   "abhikumar845422@gmail.com",
-  "nimcet202425@gmail.com"
+  "nimcet202425@gmail.com",
+  "krishnakumar13we@gmail.com"
 ];
 
 // 🔥 MAIL CONFIG

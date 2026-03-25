@@ -19,12 +19,12 @@ async function generateTimetable() {
   let sectionBusy = {};
   let subjectDayMap = {};
 
-  let sectionRoomMap = {};
+  let failedSubjects = [];
 
   // INIT
   for (let slot of timeslots) {
     for (let room of rooms) {
-      roomBusy[room._id + "_" + slot._id] = false;
+      roomBusy[room.id + "_" + slot._id] = false;
     }
   }
 
@@ -32,31 +32,13 @@ async function generateTimetable() {
 
     for (let teacher of subject.teachers) {
       for (let slot of timeslots) {
-        teacherBusy[teacher._id + "_" + slot._id] = false;
+        teacherBusy[teacher.id + "_" + slot._id] = false;
       }
     }
 
     for (let section of subject.sections) {
-
       for (let slot of timeslots) {
-        sectionBusy[section._id + "_" + slot._id] = false;
-      }
-
-      // 🔥 assign 2 nearby rooms
-      if (!sectionRoomMap[section._id]) {
-
-        let filteredRooms = rooms.filter(r =>
-          r.type === (subject.type === "lab" ? "lab" : "classroom")
-        );
-
-        filteredRooms.sort((a, b) => {
-          if (a.building === b.building) {
-            return a.floor - b.floor;
-          }
-          return a.building.localeCompare(b.building);
-        });
-
-        sectionRoomMap[section._id] = filteredRooms.slice(0, 2);
+        sectionBusy[section.id + "_" + slot._id] = false;
       }
     }
 
@@ -65,98 +47,119 @@ async function generateTimetable() {
 
   // QUEUE
   let queue = [];
-
   for (let subject of subjects) {
     for (let i = 0; i < subject.weeklyFrequency; i++) {
       queue.push(subject);
     }
   }
 
-  queue.sort(() => Math.random() - 0.5);
-
-  // ALGORITHM
+  // MAIN ALGO
   for (let session of queue) {
 
     let scheduled = false;
+
+    let totalStudents = session.sections.reduce((sum, sec) => {
+      return sum + sec.strength;
+    }, 0);
 
     for (let slot of timeslots) {
 
       if (subjectDayMap[session._id].has(slot.day)) continue;
 
-      // 🔥 total students (for lab combine)
-      let totalStudents = session.sections.reduce((sum, sec) => {
-        return sum + sec.strength;
-      }, 0);
+      // FILTER ROOMS
+      let validRooms = rooms.filter(r =>
+        r.type === (session.type === "lab" ? "lab" : "classroom")
+      );
 
-      for (let room of rooms) {
+      // 🔥 SMART SORT
+      validRooms.sort((a, b) => {
 
-        // TYPE CHECK
-        if (session.type === "theory" && room.type !== "classroom") continue;
-        if (session.type === "lab" && room.type !== "lab") continue;
-
-        // 🔥 CAPACITY CHECK
-        if (room.capacity < totalStudents) continue;
-
-        let teacherFree = true;
-
-        for (let teacher of session.teachers) {
-          let teacherKey = teacher._id + "_" + slot._id;
-          if (teacherBusy[teacherKey]) {
-            teacherFree = false;
-            break;
-          }
+        // same building + floor
+        if (a.building === b.building && a.floor === b.floor) {
+          return a.capacity - b.capacity;
         }
 
-        let roomKey = room._id + "_" + slot._id;
+        // same building
+        if (a.building === b.building) return -1;
 
-        let sectionFree = true;
+        // alphabetical building
+        return a.building.localeCompare(b.building);
+      });
 
-        for (let sec of session.sections) {
-          let sectionKey = sec._id + "_" + slot._id;
-          if (sectionBusy[sectionKey]) {
-            sectionFree = false;
-            break;
-          }
-        }
+      // 🔥 COMBINATION
+      let selectedRooms = [];
+      let capacitySum = 0;
 
-        if (teacherFree && !roomBusy[roomKey] && sectionFree) {
+      for (let room of validRooms) {
 
-          timetable.push({
-            subject: session._id,
-            teacher: session.teachers.map(t => t._id), // 🔥 multiple teacher
-            room: room._id,
-            timeslot: slot._id,
-            sections: session.sections.map(s => s._id) // 🔥 multiple section
-          });
+        let roomKey = room.id + "_" + slot._id;
+        if (roomBusy[roomKey]) continue;
 
-          // MARK BUSY
-          for (let teacher of session.teachers) {
-            let teacherKey = teacher._id + "_" + slot._id;
-            teacherBusy[teacherKey] = true;
-          }
+        selectedRooms.push(room);
+        capacitySum += room.capacity;
 
-          roomBusy[roomKey] = true;
-
-          for (let sec of session.sections) {
-            let sectionKey = sec._id + "_" + slot._id;
-            sectionBusy[sectionKey] = true;
-          }
-
-          subjectDayMap[session._id].add(slot.day);
-
-          scheduled = true;
-          break;
-        }
+        if (capacitySum >= totalStudents) break;
       }
 
-      if (scheduled) break;
+      // ❌ not enough capacity
+      if (capacitySum < totalStudents) continue;
+
+      // CHECK TEACHER
+      let teacherFree = session.teachers.every(t =>
+        !teacherBusy[t.id + "_" + slot._id]
+      );
+
+      // CHECK SECTION
+      let sectionFree = session.sections.every(sec =>
+        !sectionBusy[sec.id + "_" + slot._id]
+      );
+
+      if (teacherFree && sectionFree) {
+
+        // ✅ SINGLE ENTRY (IMPORTANT FIX)
+        timetable.push({
+          subject: session._id,
+          teacher: session.teachers.map(t => t._id),
+          room: selectedRooms.map(r => r._id), // 🔥 MULTIPLE ROOMS
+          timeslot: slot._id,
+          sections: session.sections.map(s => s._id)
+        });
+
+        // MARK ROOMS BUSY
+        for (let room of selectedRooms) {
+          let roomKey = room.id + "_" + slot._id;
+          roomBusy[roomKey] = true;
+        }
+
+        // MARK TEACHER
+        for (let teacher of session.teachers) {
+          teacherBusy[teacher.id + "_" + slot._id] = true;
+        }
+
+        // MARK SECTION
+        for (let sec of session.sections) {
+          sectionBusy[sec.id + "_" + slot._id] = true;
+        }
+
+        subjectDayMap[session._id].add(slot.day);
+
+        scheduled = true;
+        break;
+      }
+    }
+
+    if (!scheduled) {
+      failedSubjects.push(session.name || "Unknown");
     }
   }
 
   await Timetable.deleteMany({});
   await Timetable.insertMany(timetable);
 
-  return timetable;
+  return {
+    timetable,
+    failedSubjects
+  };
 }
 
 module.exports = { generateTimetable };
