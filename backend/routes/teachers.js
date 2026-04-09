@@ -5,6 +5,12 @@ const Teacher = require("../models/Teacher");
 // 🔥 ADD TEACHER
 router.post("/", async (req, res) => {
   try {
+    const { name, email } = req.body;
+
+    const exists = await Teacher.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ error: "Teacher already exists" });
+    }
 
     const teacher = new Teacher(req.body);
     await teacher.save();
@@ -16,11 +22,14 @@ router.post("/", async (req, res) => {
   }
 });
 
-// 🔥 GET ALL TEACHERS
+// 🔥 GET ALL TEACHERS (FIXED ✅)
 router.get("/", async (req, res) => {
   try {
 
-    const teachers = await Teacher.find();
+    const teachers = await Teacher.find()
+      .populate("primaryDepartment")
+      .populate("canTeachDepartments");
+
     res.json(teachers);
 
   } catch (error) {
@@ -28,17 +37,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 🔥 DELETE TEACHER (FIX ADDED)
+// 🔥 DELETE
 router.delete("/:id", async (req, res) => {
   try {
 
-    const deletedTeacher = await Teacher.findByIdAndDelete(req.params.id);
-
-    if (!deletedTeacher) {
-      return res.status(404).json({ message: "Teacher not found" });
-    }
-
-    res.json({ message: "Teacher deleted successfully" });
+    await Teacher.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
 
   } catch (error) {
     res.status(500).json({ error: error.message });

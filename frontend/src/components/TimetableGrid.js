@@ -9,7 +9,6 @@ function TimetableGrid() {
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
 
-  // 🔥 FETCH DATA
   useEffect(() => {
     fetch("http://localhost:5000/api/timetable")
       .then(res => res.json())
@@ -22,12 +21,10 @@ function TimetableGrid() {
       });
   }, []);
 
-  // 🔥 DAYS
-  const days = [
-    ...new Set(data.map(item => item.timeslot?.day))
-  ].filter(Boolean);
+  // ✅ DAYS (LEFT SIDE)
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-  // 🔥 TIME
+  // ✅ TIMES (TOP SIDE)
   const times = [
     ...new Set(
       data.map(item =>
@@ -36,37 +33,9 @@ function TimetableGrid() {
           : ""
       )
     )
-  ].filter(Boolean);
+  ].filter(Boolean).sort();
 
-  // 🔥 UNIQUE SECTIONS
-  const uniqueSections = [
-    ...new Map(
-      data.flatMap(item =>
-        item.sections?.map(sec => [sec._id, sec]) || []
-      )
-    ).values()
-  ];
-
-  const uniqueTeachers = [
-    ...new Set(
-      data.flatMap(item =>
-        item.teacher?.map(t => t.name) || []
-      )
-    )
-  ];
-
-  // 🔥 FIX ROOM (MULTIPLE ROOMS SUPPORT)
-  const uniqueRooms = [
-    ...new Set(
-      data.flatMap(item =>
-        Array.isArray(item.room)
-          ? item.room.map(r => r.name)
-          : [item.room?.name]
-      )
-    )
-  ].filter(Boolean);
-
-  // 🔥 CELL DATA (FINAL FIX)
+  // FILTER DATA
   const getCellData = (day, time) => {
     return data.filter(item => {
 
@@ -76,18 +45,14 @@ function TimetableGrid() {
         item.timeslot.day === day &&
         (item.timeslot.startTime + "-" + item.timeslot.endTime) === time;
 
-      // ✅ SECTION FIX
       const matchSection =
         !selectedSection ||
-        (item.sections || []).some(sec =>
-          sec._id === selectedSection
-        );
+        (item.sections || []).some(sec => sec._id === selectedSection);
 
       const matchTeacher =
         !selectedTeacher ||
         item.teacher?.some(t => t.name === selectedTeacher);
 
-      // ✅ ROOM FIX (MULTIPLE ROOMS)
       const matchRoom =
         !selectedRoom ||
         (
@@ -106,38 +71,19 @@ function TimetableGrid() {
 
       <h2>📅 Timetable</h2>
 
-      {/* 🔥 FILTER */}
+      {/* FILTER */}
       <div className="card" style={{ marginBottom: "20px" }}>
 
-        <select
-          className="input"
-          value={selectedSection}
-          onChange={(e) => setSelectedSection(e.target.value)}
-        >
+        <select className="input" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
           <option value="">All Sections</option>
-          {uniqueSections.map(sec => (
-            <option key={sec._id} value={sec._id}>
-              {sec.name}
-            </option>
-          ))}
         </select>
 
-        <select
-          className="input"
-          value={selectedTeacher}
-          onChange={(e) => setSelectedTeacher(e.target.value)}
-        >
+        <select className="input" value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)}>
           <option value="">All Teachers</option>
-          {uniqueTeachers.map(t => <option key={t}>{t}</option>)}
         </select>
 
-        <select
-          className="input"
-          value={selectedRoom}
-          onChange={(e) => setSelectedRoom(e.target.value)}
-        >
+        <select className="input" value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)}>
           <option value="">All Rooms</option>
-          {uniqueRooms.map(r => <option key={r}>{r}</option>)}
         </select>
 
         <button onClick={() => {
@@ -150,44 +96,45 @@ function TimetableGrid() {
 
       </div>
 
-      {/* 🔥 PRINT */}
-      <button onClick={() => window.print()}>
-        🖨 Print
-      </button>
+      {/* PRINT */}
+      <button onClick={() => window.print()}>🖨 Print</button>
 
-      {/* 🔥 TABLE */}
+      {/* ✅ FINAL TABLE (COLLEGE STYLE) */}
       <table>
 
         <thead>
           <tr>
-            <th>Time</th>
-            {days.map(day => <th key={day}>{day}</th>)}
+            <th>Day / Time</th>
+            {times.map(time => (
+              <th key={time}>{time}</th>
+            ))}
           </tr>
         </thead>
 
         <tbody>
 
-          {times.map(time => (
-            <tr key={time}>
+          {days.map(day => (
+            <tr key={day}>
 
-              <td><b>{time}</b></td>
+              {/* LEFT SIDE DAY */}
+              <td><b>{day}</b></td>
 
-              {days.map(day => {
+              {times.map(time => {
 
                 const cellData = getCellData(day, time);
 
                 return (
-                  <td key={day}>
+                  <td key={time}>
 
                     {cellData.length === 0
-                      ? "-"
+                      ? <div style={{ color: "#999", fontWeight: "bold" }}>FREE</div>
                       : cellData.map((item, i) => (
 
                         <div
                           key={i}
                           className="card"
                           style={{
-                            marginBottom: "10px",
+                            marginBottom: "8px",
                             borderLeft:
                               item.subject?.type === "lab"
                                 ? "5px solid orange"
@@ -199,7 +146,7 @@ function TimetableGrid() {
                             {item.subject?.name}
                           </div>
 
-                          <div style={{ color: "green", fontSize: "13px" }}>
+                          <div style={{ color: "green", fontSize: "12px" }}>
                             🎓 {item.sections?.map(sec => sec.name).join(", ")}
                           </div>
 
@@ -207,7 +154,6 @@ function TimetableGrid() {
                             👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}
                           </div>
 
-                          {/* ✅ MULTI ROOM DISPLAY */}
                           <div className="small-text">
                             🏫 {
                               Array.isArray(item.room)

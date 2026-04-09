@@ -15,189 +15,175 @@ function StudentDashboard() {
 
   const studentName = localStorage.getItem("studentName");
 
-  // 🔥 FETCH ALL DATA
+  // 🔥 FETCH DATA
   useEffect(() => {
-    fetch("http://localhost:5000/api/departments")
-      .then(res => res.json())
-      .then(data => setDepartments(data));
-
-    fetch("http://localhost:5000/api/courses")
-      .then(res => res.json())
-      .then(data => setCourses(data));
-
-    fetch("http://localhost:5000/api/sections")
-      .then(res => res.json())
-      .then(data => setSections(data));
+    fetch("http://localhost:5000/api/departments").then(res => res.json()).then(setDepartments);
+    fetch("http://localhost:5000/api/courses").then(res => res.json()).then(setCourses);
+    fetch("http://localhost:5000/api/sections").then(res => res.json()).then(setSections);
   }, []);
 
-  // 🔥 AUTO HIDE MESSAGE
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(""), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
-  // 🔥 FILTER COURSES
+  // 🔥 FILTER
   const filteredCourses = courses.filter(c =>
     !selectedDept || c.department?.name === selectedDept
   );
 
-  // 🔥 FILTER SECTIONS
   const filteredSections = sections.filter(s =>
     !selectedCourse || s.course?.name === selectedCourse
   );
 
-  // 🔥 FETCH TIMETABLE (ONLY MY SECTION)
+  // 🔥 FETCH TIMETABLE
   const fetchTimetable = async () => {
-
-    if (!selectedDept || !selectedCourse || !selectedSection) {
-      setMessage("⚠️ Please select all fields");
+    if (!selectedSection) {
+      setMessage("⚠️ Select section");
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/timetable");
+      const res = await fetch(`http://localhost:5000/api/timetable`);
       const data = await res.json();
 
-      // ✅ CORRECT FILTER (MAIN FIX)
       const filtered = data.filter(item =>
         item.sections?.some(sec => sec.name === selectedSection)
       );
 
-      if (filtered.length === 0) {
-        setMessage("❌ Timetable not generated yet");
-        setTimetable([]);
-      } else {
-        setMessage("✅ Timetable loaded");
-        setTimetable(filtered);
-      }
+      setTimetable(filtered);
+      setMessage(filtered.length ? "✅ Loaded" : "❌ No timetable");
 
     } catch {
-      setMessage("❌ Server error");
+      setMessage("❌ Error");
     }
+  };
+
+  // 🔥 DAYS
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  // 🔥 SORTED TIMES
+  const times = [
+    ...new Set(
+      timetable.map(t => `${t.timeslot?.startTime}-${t.timeslot?.endTime}`)
+    )
+  ].sort((a, b) => {
+    const getStart = (t) => t.split("-")[0];
+    return getStart(a).localeCompare(getStart(b));
+  });
+
+  // 🔥 GRID
+  const grid = {};
+  timetable.forEach(item => {
+    const day = item.timeslot?.day;
+    const time = `${item.timeslot?.startTime}-${item.timeslot?.endTime}`;
+
+    if (!grid[day]) grid[day] = {};
+    grid[day][time] = item;
+  });
+
+  // 🎨 COLOR
+  const getColor = (type) => {
+    if (type === "lab") return "#fef3c7";
+    if (type === "theory") return "#dbeafe";
+    return "#f1f5f9";
   };
 
   return (
     <div style={{ padding: "20px" }}>
 
       {/* HEADER */}
-      <div style={{
-        background: "linear-gradient(135deg,#2563eb,#1e40af)",
-        color: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        marginBottom: "20px"
-      }}>
+      <div style={header}>
         <h2>🎓 Student Dashboard</h2>
         <p>Welcome, {studentName || "Student"} 👋</p>
       </div>
 
       {/* MESSAGE */}
-      {message && (
-        <div style={{
-          background: message.includes("❌") ? "#fee2e2" : "#dcfce7",
-          color: message.includes("❌") ? "#b91c1c" : "#166534",
-          padding: "10px",
-          borderRadius: "8px",
-          marginBottom: "10px"
-        }}>
-          {message}
-        </div>
-      )}
+      {message && <div style={msg}>{message}</div>}
 
-      {/* FILTER CARD */}
+      {/* FILTER */}
       <div style={card}>
 
-        {/* DEPARTMENT */}
-        <select
-          value={selectedDept}
-          onChange={(e) => {
-            setSelectedDept(e.target.value);
-            setSelectedCourse("");
-            setSelectedSection("");
-            setTimetable([]);
-          }}
-          style={input}
-        >
-          <option value="">🏫 Select Department</option>
-          {departments.map(d => (
-            <option key={d._id} value={d.name}>{d.name}</option>
-          ))}
+        <select value={selectedDept} onChange={(e)=>setSelectedDept(e.target.value)} style={input}>
+          <option value="">Select Department</option>
+          {departments.map(d=> <option key={d._id}>{d.name}</option>)}
         </select>
 
-        {/* COURSE */}
-        <select
-          value={selectedCourse}
-          onChange={(e) => {
-            setSelectedCourse(e.target.value);
-            setSelectedSection("");
-            setTimetable([]);
-          }}
-          style={input}
-        >
-          <option value="">📘 Select Course</option>
-          {filteredCourses.map(c => (
-            <option key={c._id} value={c.name}>{c.name}</option>
-          ))}
+        <select value={selectedCourse} onChange={(e)=>setSelectedCourse(e.target.value)} style={input}>
+          <option value="">Select Course</option>
+          {filteredCourses.map(c=> <option key={c._id}>{c.name}</option>)}
         </select>
 
-        {/* SECTION */}
-        <select
-          value={selectedSection}
-          onChange={(e) => {
-            setSelectedSection(e.target.value);
-            setTimetable([]);
-          }}
-          style={input}
-        >
-          <option value="">📗 Select Section</option>
-          {filteredSections.map(s => (
-            <option key={s._id} value={s.name}>
-              Section {s.name}
-            </option>
-          ))}
+        <select value={selectedSection} onChange={(e)=>setSelectedSection(e.target.value)} style={input}>
+          <option value="">Select Section</option>
+          {filteredSections.map(s=> <option key={s._id}>{s.name}</option>)}
         </select>
 
         <button onClick={fetchTimetable} style={btn}>
-          🚀 View My Timetable
+          🚀 View Timetable
+        </button>
+
+        {/* PRINT */}
+        <button onClick={() => window.print()} style={printBtn}>
+          🖨 Print Timetable
         </button>
 
       </div>
 
-      {/* TIMETABLE TABLE */}
+      {/* 🔥 GRID TABLE */}
       {timetable.length > 0 && (
-        <table style={table}>
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Time</th>
-              <th>Subject</th>
-              <th>Teacher</th>
-              <th>Room</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {timetable.map((item, i) => (
-              <tr key={i}>
-                <td>{item.timeslot?.day}</td>
-                <td>
-                  {item.timeslot?.startTime} - {item.timeslot?.endTime}
-                </td>
-                <td>{item.subject?.name}</td>
-                <td>{item.teacher?.name}</td>
-                <td>{item.room?.name}</td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={table}>
+            <thead>
+              <tr style={{ background: "#1e40af", color: "white" }}>
+                <th style={th}>DAY / TIME</th>
+                {times.map((t, i) => (
+                  <th key={i} style={th}>{t}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
 
-      {/* EMPTY STATE */}
-      {timetable.length === 0 && (
-        <div style={empty}>
-          📭 No timetable to display
+            <tbody>
+              {days.map((day, i) => (
+                <tr key={i}>
+                  <td style={{ ...td, fontWeight: "bold", background: "#f1f5f9" }}>
+                    {day}
+                  </td>
+
+                  {times.map((time, j) => {
+                    const item = grid[day]?.[time];
+
+                    if (!item) {
+                      return (
+                        <td key={j} style={{ ...td, background: "#f1f5f9" }}>
+                          FREE
+                        </td>
+                      );
+                    }
+
+                    return (
+                      <td
+                        key={j}
+                        style={{
+                          ...td,
+                          background: getColor(item.subject?.type)
+                        }}
+                      >
+                        <b>{item.subject?.name}</b><br />
+
+                        👨‍🏫 {
+                          item.teacher && item.teacher.length > 0
+                            ? item.teacher.map(t => t.name).join(", ")
+                            : "N/A"
+                        }<br />
+
+                        🏫 {item.room?.name || "N/A"}<br />
+
+                        📚 {
+                          item.sections?.map(s => s.name).join(", ")
+                        }
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -205,20 +191,35 @@ function StudentDashboard() {
   );
 }
 
-// STYLES
+// 🎨 STYLES
+const header = {
+  background: "#2563eb",
+  color: "white",
+  padding: "15px",
+  borderRadius: "10px",
+  marginBottom: "20px"
+};
+
+const msg = {
+  background: "#dcfce7",
+  padding: "10px",
+  marginBottom: "10px",
+  borderRadius: "6px"
+};
+
 const card = {
   background: "white",
   padding: "20px",
-  borderRadius: "12px",
+  borderRadius: "10px",
   marginBottom: "20px",
-  boxShadow: "0 6px 15px rgba(0,0,0,0.1)"
+  boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
 };
 
 const input = {
   width: "100%",
-  padding: "10px",
   marginBottom: "10px",
-  borderRadius: "8px",
+  padding: "10px",
+  borderRadius: "6px",
   border: "1px solid #ccc"
 };
 
@@ -228,8 +229,17 @@ const btn = {
   background: "#2563eb",
   color: "white",
   border: "none",
-  borderRadius: "8px",
-  cursor: "pointer"
+  marginBottom: "10px",
+  borderRadius: "6px"
+};
+
+const printBtn = {
+  width: "100%",
+  padding: "10px",
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  borderRadius: "6px"
 };
 
 const table = {
@@ -238,10 +248,15 @@ const table = {
   background: "white"
 };
 
-const empty = {
-  textAlign: "center",
-  padding: "20px",
-  color: "#64748b"
+const th = {
+  border: "1px solid #ccc",
+  padding: "10px"
+};
+
+const td = {
+  border: "1px solid #ddd",
+  padding: "10px",
+  textAlign: "center"
 };
 
 export default StudentDashboard;

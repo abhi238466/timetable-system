@@ -23,4 +23,20 @@ router.get("/", async (req, res) => {
   }
 });
 
+// 🔥 DELETE TIMESLOT (NEW)
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await TimeSlot.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Timeslot not found" });
+    }
+
+    res.json({ message: "Timeslot deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

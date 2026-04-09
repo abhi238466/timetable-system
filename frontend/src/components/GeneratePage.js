@@ -17,7 +17,7 @@ function GeneratePage() {
     if (message.text) {
       const timer = setTimeout(() => {
         setMessage({ text: "", type: "" });
-      }, 4000);
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
@@ -31,27 +31,14 @@ function GeneratePage() {
       const res = await fetch("http://localhost:5000/api/timetable/generate");
       const data = await res.json();
 
-      // ❌ API fail
+      // ❌ API ERROR
       if (!res.ok) {
-        throw new Error(data.message || "Failed");
+        throw new Error(data.error || "Server error");
       }
 
-      // ✅ CASE 1: success (no failedSubjects)
-      if (!data.failedSubjects) {
-        setMessage({
-          text: data.message || "✅ Timetable Generated Successfully!",
-          type: "success"
-        });
+      // ✅ SUCCESS (NO FAIL)
+      if (!data.failedSubjects || data.failedSubjects.length === 0) {
 
-        setTimeout(() => {
-          navigate("/timetable");
-        }, 1000);
-
-        return;
-      }
-
-      // ✅ CASE 2: success but some failed
-      if (data.failedSubjects.length === 0) {
         setMessage({
           text: "✅ Timetable Generated Successfully!",
           type: "success"
@@ -59,22 +46,33 @@ function GeneratePage() {
 
         setTimeout(() => {
           navigate("/timetable");
-        }, 1000);
+        }, 1200);
+
+        return;
       }
 
-      // ⚠️ CASE 3: partial fail
+      // ⚠️ PARTIAL FAIL (DETAILED MESSAGE)
       else {
+
+        let errorText = "⚠️ Some subjects could not be scheduled:\n\n";
+
+        data.failedSubjects.forEach((f, i) => {
+          errorText += `${i + 1}. ${f.subject} (${f.requiredPerWeek}/week) → ${f.reason}\n`;
+        });
+
         setMessage({
-          text: ` ${data.failedSubjects.join(", ")}`,
+          text: errorText,
           type: "warning"
         });
       }
 
     } catch (error) {
+
       setMessage({
-        text: "❌ Error generating timetable",
+        text: `❌ ${error.message || "Error generating timetable"}`,
         type: "error"
       });
+
     } finally {
       setLoading(false);
     }
@@ -106,9 +104,10 @@ function GeneratePage() {
       {message.text && (
         <div style={{
           marginTop: "20px",
-          padding: "12px",
+          padding: "15px",
           borderRadius: "8px",
-          fontWeight: "bold",
+          fontWeight: "500",
+          whiteSpace: "pre-line", // 🔥 IMPORTANT (line break fix)
           background:
             message.type === "success" ? "#dcfce7" :
             message.type === "warning" ? "#fef3c7" :

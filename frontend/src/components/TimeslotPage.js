@@ -33,7 +33,6 @@ function TimeslotPage() {
       return;
     }
 
-    // 🔥 DUPLICATE CHECK
     const exists = slots.some(
       s => s.day === day && s.startTime === startTime && s.endTime === endTime
     );
@@ -57,7 +56,15 @@ function TimeslotPage() {
     fetchSlots();
   };
 
-  // 🔥 FILTER BY DAY
+  // 🔥 DELETE SLOT (NEW)
+  const deleteSlot = async (id) => {
+    await fetch(`http://localhost:5000/api/timeslots/${id}`, {
+      method: "DELETE"
+    });
+
+    fetchSlots();
+  };
+
   const filteredSlots = slots.filter(slot => slot.day === day);
 
   return (
@@ -66,7 +73,7 @@ function TimeslotPage() {
 
       <h2 style={title}>⏰ Timeslot Management</h2>
 
-      {/* 🔥 FORM */}
+      {/* FORM */}
       <div style={form}>
 
         <select value={day} onChange={(e) => setDay(e.target.value)} style={input}>
@@ -93,12 +100,10 @@ function TimeslotPage() {
 
       </div>
 
-      {/* 🔥 INFO BAR */}
       <div style={info}>
         Showing slots for: <b>{day}</b>
       </div>
 
-      {/* 🔥 GRID */}
       <div style={grid}>
 
         {filteredSlots.length === 0 ? (
@@ -115,6 +120,14 @@ function TimeslotPage() {
                 🕒 {slot.startTime} - {slot.endTime}
               </p>
 
+              {/* 🔥 DELETE BUTTON (NEW) */}
+              <button
+                style={deleteBtn}
+                onClick={() => deleteSlot(slot._id)}
+              >
+                Delete
+              </button>
+
             </div>
           ))
         )}
@@ -128,6 +141,16 @@ function TimeslotPage() {
 }
 
 /* 🔥 STYLES */
+
+const deleteBtn = {
+  marginTop: "10px",
+  background: "#ef4444",
+  color: "white",
+  border: "none",
+  padding: "8px 12px",
+  borderRadius: "6px",
+  cursor: "pointer"
+};
 
 const title = {
   marginBottom: "25px",
@@ -179,8 +202,7 @@ const card = {
   padding: "20px",
   borderRadius: "12px",
   boxShadow: "0 6px 15px rgba(0,0,0,0.08)",
-  borderLeft: "5px solid #2563eb",
-  transition: "0.3s"
+  borderLeft: "5px solid #2563eb"
 };
 
 const empty = {

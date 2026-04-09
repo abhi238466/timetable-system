@@ -12,7 +12,16 @@ router.post("/", async (req, res) => {
     }
 
     // 🔥 FIX: code manually generate
-    const code = name.substring(0, 3).toUpperCase();
+    //const code = name.substring(0, 3).toUpperCase();
+
+    let baseCode=name.trim().substring(0,3).toUpperCase();
+    let code=baseCode;
+    let count =1;
+
+    while (await Department.findOne({code})){
+      code = baseCode+count;
+      count++;
+    }
 
     const dep = new Department({
       name,

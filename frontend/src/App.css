@@ -18,7 +18,7 @@ h1, h2, h3 {
   font-weight: 600;
 }
 
-/* 🔥 BUTTON BASE */
+/* 🔥 BUTTON */
 button {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
@@ -42,7 +42,7 @@ button:hover {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
-/* 🔥 TABLE (IMPROVED) */
+/* 🔥 TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -70,7 +70,7 @@ tr:hover {
   background: #f8fafc;
 }
 
-/* 🔥 FORM CARD */
+/* 🔥 FORM BOX */
 .form-box {
   background: white;
   padding: 20px;
@@ -98,7 +98,7 @@ input:focus, select:focus {
   box-shadow: 0 0 6px rgba(37,99,235,0.3);
 }
 
-/* 🔥 CARD (MAIN UI CHANGE) */
+/* 🔥 CARD */
 .card {
   background: white;
   padding: 20px;
@@ -107,6 +107,9 @@ input:focus, select:focus {
   transition: all 0.25s ease;
   border-left: 5px solid #2563eb;
   position: relative;
+
+  max-width: 600px;
+  margin: 20px auto;
 }
 
 .card:hover {
@@ -122,7 +125,7 @@ input:focus, select:focus {
   margin-top: 10px;
 }
 
-/* 🔥 EMPTY STATE */
+/* 🔥 EMPTY */
 .empty {
   padding: 40px;
   background: #e2e8f0;
@@ -133,7 +136,7 @@ input:focus, select:focus {
   grid-column: 1/-1;
 }
 
-/* 🔥 SECTION LABEL (NEW) */
+/* 🔥 LABEL */
 .label {
   font-size: 13px;
   color: #64748b;
@@ -146,9 +149,7 @@ input:focus, select:focus {
   color: #475569;
 }
 
-
-
-/* 🔥 PRINT MODE */
+/* 🔥 PRINT */
 @media print {
   button {
     display: none;
@@ -164,34 +165,51 @@ input:focus, select:focus {
   }
 }
 
-/* 🔥 SUBJECT FORM FIX (SAFE OVERRIDE) */
+/* =============================== */
+/* 🔥 CHECKBOX SYSTEM (FINAL FIX) */
+/* =============================== */
 
-.card {
-  max-width: 600px;
-  margin: 20px auto;
-}
-
+/* 🔥 GROUP */
 .checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 10px;
-  max-height: 120px;
+
+  max-height: 150px;
   overflow-y: auto;
+
   background: #f9fafb;
 }
 
+/* 🔥 ITEM (USED BY SUBJECT + TEACHER BOTH) */
 .checkbox-item {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
+.checkbox-item:hover {
+  background: #e0e7ff;
+}
+
+/* 🔥 CHECKBOX */
 .checkbox-item input {
   width: 16px;
   height: 16px;
+  cursor: pointer;
 }
 
+/* 🔥 TEXT */
 .checkbox-item span {
-  flex: unset !important;
+  font-size: 14px;
 }
