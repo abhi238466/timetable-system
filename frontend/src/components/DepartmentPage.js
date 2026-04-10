@@ -272,6 +272,8 @@ function DepartmentPage() {
           linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
         mask-composite: exclude;
+
+        pointer-events: none; /* ✅ FIX */
       }
 
       .dept-card:hover {
@@ -291,6 +293,10 @@ function DepartmentPage() {
         color: white;
         border: none;
         transition: 0.3s;
+
+        cursor: pointer;     /* ✅ FIX */
+        position: relative;  /* ✅ FIX */
+        z-index: 1;          /* ✅ FIX */
       }
 
       .delete-btn:hover {

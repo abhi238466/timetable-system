@@ -15,10 +15,20 @@ function TeacherForm() {
   const [searchTeach, setSearchTeach] = useState("");
   const [searchTeacherList, setSearchTeacherList] = useState("");
 
+  const [msg, setMsg] = useState("");
+  const [type, setType] = useState("");
+
   useEffect(() => {
     fetchTeachers();
     fetchDepartments();
   }, []);
+
+  useEffect(() => {
+    if (msg) {
+      const timer = setTimeout(() => setMsg(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [msg]);
 
   const fetchTeachers = async () => {
     const res = await fetch("http://localhost:5000/api/teachers");
@@ -47,18 +57,21 @@ function TeacherForm() {
   const addTeacher = async () => {
 
     if (!name || !email || !primaryDept) {
-      alert("Fill all fields");
+      setMsg("Fill all fields ❌");
+      setType("error");
       return;
     }
 
     if (!isValidEmail(email)) {
-      alert("Invalid Email ❌");
+      setMsg("Invalid Email ❌");
+      setType("error");
       return;
     }
 
     const exists = teachers.some(t => t.email === email);
     if (exists) {
-      alert("Email already exists ❌");
+      setMsg("Email already exists ❌");
+      setType("error");
       return;
     }
 
@@ -73,6 +86,9 @@ function TeacherForm() {
       })
     });
 
+    setMsg("Teacher added successfully ✅");
+    setType("success");
+
     setName("");
     setEmail("");
     setPrimaryDept("");
@@ -85,6 +101,10 @@ function TeacherForm() {
     await fetch(`http://localhost:5000/api/teachers/${id}`, {
       method: "DELETE"
     });
+
+    setMsg("Deleted successfully ✅");
+    setType("success");
+
     fetchTeachers();
   };
 
@@ -92,13 +112,18 @@ function TeacherForm() {
 
     <div className="teacher-container">
 
-      {/* 🔥 HEADER FIX */}
       <div className="teacher-header">
         <h2>👨‍🏫 Teacher Management</h2>
         <p>Manage teachers with smart filtering & assignment</p>
       </div>
 
-      {/* 🔥 FORM */}
+      {/* ✅ IMPROVED MESSAGE UI */}
+      {msg && (
+        <div className={`msg-box ${type}`}>
+          {msg}
+        </div>
+      )}
+
       <div className="teacher-card">
 
         <input
@@ -113,7 +138,6 @@ function TeacherForm() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        {/* PRIMARY SEARCH */}
         <input
           placeholder="Search Department..."
           value={searchDept}
@@ -134,7 +158,6 @@ function TeacherForm() {
             ))}
         </select>
 
-        {/* 🔥 DROPDOWN FIX */}
         <details className="dropdown">
           <summary>Can Teach In (Optional)</summary>
 
@@ -165,7 +188,6 @@ function TeacherForm() {
 
       </div>
 
-      {/* 🔥 SEARCH LIST */}
       <input
         className="teacher-search"
         placeholder="Search teachers..."
@@ -173,7 +195,6 @@ function TeacherForm() {
         onChange={(e) => setSearchTeacherList(e.target.value)}
       />
 
-      {/* 🔥 LIST */}
       <div className="teacher-grid">
 
         {teachers
@@ -208,7 +229,6 @@ function TeacherForm() {
 
       </div>
 
-      {/* 🔥 FINAL CSS FIX */}
       <style>{`
 
       .teacher-container {
@@ -216,7 +236,6 @@ function TeacherForm() {
         background: #f8fafc;
       }
 
-      /* HEADER FIX */
       .teacher-header h2 {
         font-size: 28px;
         font-weight: 700;
@@ -228,7 +247,34 @@ function TeacherForm() {
         margin-top: 5px;
       }
 
-      /* FORM */
+      /* ✅ NEW MESSAGE DESIGN */
+      .msg-box {
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-left: 5px solid;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .msg-box.success {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #10b981;
+      }
+
+      .msg-box.error {
+        background: #fef2f2;
+        color: #7f1d1d;
+        border-color: #ef4444;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
       .teacher-card {
         background: white;
         padding: 25px;
@@ -246,14 +292,12 @@ function TeacherForm() {
         border: 1px solid #cbd5f5;
       }
 
-      /* DROPDOWN */
       .dropdown summary {
         cursor: pointer;
         font-weight: 600;
         margin: 10px 0;
       }
 
-      /* 🔥 CHECKBOX GRID FIX */
       .checkbox-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
@@ -278,7 +322,6 @@ function TeacherForm() {
         height: 16px;
       }
 
-      /* SEARCH */
       .teacher-search {
         width: 100%;
         padding: 12px;
@@ -287,7 +330,6 @@ function TeacherForm() {
         border: 1px solid #cbd5f5;
       }
 
-      /* GRID */
       .teacher-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit,minmax(240px,1fr));

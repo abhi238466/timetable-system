@@ -31,13 +31,20 @@ function TimeslotPage() {
     }
   }, [msg]);
 
-  // 🔥 TIME FORMAT (AM/PM)
+  // 🔥 TIME FORMAT (AM/PM) ✅ FIXED ONLY THIS
   const formatTime = (time) => {
+    if (!time) return "";
+
     const [h, m] = time.split(":");
-    let hour = parseInt(h);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    hour = hour % 12 || 12;
-    return `${hour}:${m} ${ampm}`;
+    const date = new Date();
+    date.setHours(h);
+    date.setMinutes(m);
+
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
   };
 
   // 🔥 ADD SLOT
