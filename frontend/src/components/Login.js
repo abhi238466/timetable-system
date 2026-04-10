@@ -1,343 +1,264 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import axios from "axios";
+import "./Login.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useNavigate, useLocation } from "react-router-dom";
+import Register from "./Register";
+import Toast from "./Toast";
 
-function Login({ setIsLoggedIn }) {
+function Login() {
 
-  const [key, setKey] = useState(0);
-  const [userType, setUserType] = useState("admin");
-  const [mode, setMode] = useState("login");
-  const [step, setStep] = useState(1);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: "", type: "" });
-  const [showPassword, setShowPassword] = useState(false);
+  const [show, setShow] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    phone: "",
-    address: "",
-    college: "",
-    department: "",
-    course: "",
-    section: "",
-    gender: "",
-    otp: "",
-    newPassword: ""
-  });
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
-  useEffect(() => {
-    setStep(1);
-    setLoading(false);
-    setShowPassword(false);
-    setMessage({ text: "", type: "" });
+  const [data, setData] = useState({ email: "", password: "" });
 
-    setForm({
-      name: "",
-      email: "",
-      password: "",
-      phone: "",
-      address: "",
-      college: "",
-      department: "",
-      course: "",
-      section: "",
-      gender: "",
-      otp: "",
-      newPassword: ""
-    });
+  const [step, setStep] = useState("login");
+  const [otp, setOtp] = useState("");
+  const [newPass, setNewPass] = useState("");
 
-  }, [mode, userType]);
+  const [loadingOtp, setLoadingOtp] = useState(false);
+  const [loadingLogin, setLoadingLogin] = useState(false);
+
+  const showMessage = (msg, type = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setTimeout(() => setToastMsg(""), 3000);
+  };
 
   const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setData({ ...data, [e.target.name]: e.target.value });
   };
 
-  // ✅ FULL VALIDATION
-  const validate = () => {
+  // 🔥 ROLE DETECT
+  const role = location.pathname.includes("admin")
+    ? "admin"
+    : location.pathname.includes("student")
+    ? "student"
+    : "teacher";
 
-    if (!form.email.trim()) return "Email required";
-
-    if (mode === "login") {
-      if (!form.password.trim()) return "Password required";
-    }
-
-    if (mode === "register") {
-
-      if (!form.name || !form.password) return "Fill all fields";
-
-      if (userType === "admin") {
-        if (!form.phone || !form.address || !form.college) {
-          return "Fill admin details";
-        }
-      }
-
-      if (userType === "student") {
-        if (!form.college || !form.department || !form.course || !form.section || !form.gender) {
-          return "Fill student details";
-        }
-      }
-    }
-
-    if (mode === "forgot" && step === 2) {
-      if (!form.newPassword) return "Enter new password";
-    }
-
-    return null;
-  };
-
-  // 🔥 SEND OTP (STRICT VALIDATION)
-  const sendOtp = async () => {
-
-    const error = validate();
-    if (error) {
-      setMessage({ text: error, type: "error" });
+  // 🔥 LOGIN
+  const handleLogin = async () => {
+    if (!data.email || !data.password) {
+      showMessage("Fill all fields ⚠️", "error");
       return;
     }
 
-    setLoading(true);
-    setMessage({ text: "Sending OTP...", type: "info" });
-
-    const url =
-      userType === "admin"
-        ? "http://localhost:5000/api/auth/send-otp"
-        : "http://localhost:5000/api/student/send-otp";
-
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          mode: mode
-        })
-      });
+      setLoadingLogin(true);
 
-      const data = await res.json();
+      let url = "";
 
-      setMessage({
-        text: data.message,
-        type: data.message.includes("success") ? "success" : "error"
-      });
+      if (role === "admin") {
+        url = "http://localhost:5000/api/auth/login";
+      } else if (role === "student") {
+        url = "http://localhost:5000/api/student/login";
+      } else {
+        url = "http://localhost:5000/api/teacher-auth/login";
+      }
 
-      if (data.message === "OTP sent successfully") {
-        setStep(2);
+      const res = await axios.post(url, data);
+
+      if (res.data.message === "Login success") {
+
+        // ✅ ADMIN STORE FIX
+        if (role === "admin") {
+          localStorage.setItem("name", res.data.user.name);
+          localStorage.setItem("email", res.data.user.email);
+        }
+
+        // ✅ STUDENT STORE
+        if (role === "student") {
+          localStorage.setItem("studentName", res.data.user.name);
+          localStorage.setItem("studentEmail", res.data.user.email);
+        }
+
+        // ✅ TEACHER STORE (AS IT IS)
+        if (role === "teacher") {
+          localStorage.setItem("teacherName", res.data.user.name);
+          localStorage.setItem("teacherEmail", res.data.user.email);
+        }
+
+        showMessage("Login success ✅");
+
+        setTimeout(() => {
+          if (role === "admin") navigate("/admin-dashboard");
+          else if (role === "student") navigate("/student-dashboard");
+          else navigate("/teacher-dashboard");
+        }, 1000);
+
+      } else {
+        showMessage(res.data.message, "error");
       }
 
     } catch {
-      setMessage({ text: "OTP failed", type: "error" });
+      showMessage("Server error ❌", "error");
+    } finally {
+      setLoadingLogin(false);
     }
-
-    setLoading(false);
   };
 
-  // 🔥 FINAL LOGIN FIX (IMPORTANT)
-  // 🔥 ONLY REPLACE HANDLE SUBMIT FUNCTION
+  // 🔥 SEND OTP
+  const sendOtp = async () => {
 
-const handleSubmit = async () => {
+    if (!data.email) return showMessage("Enter email", "error");
 
-  if (loading) return;
+    let url = "";
 
-  const error = validate();
-  if (error) {
-    setMessage({ text: error, type: "error" });
-    return;
-  }
-
-  setLoading(true);
-  setMessage({ text: "Processing...", type: "info" });
-
-  let url = "";
-
-  if (userType === "admin") {
-    if (mode === "login") url = "/api/auth/login";
-    if (mode === "register") url = "/api/auth/register";
-    if (mode === "forgot") url = "/api/auth/reset";
-  } else {
-    if (mode === "login") url = "/api/student/login";
-    if (mode === "register") url = "/api/student/register";
-    if (mode === "forgot") url = "/api/student/reset";
-  }
-
-  try {
-    const res = await fetch("http://localhost:5000" + url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-
-    const data = await res.json();
-
-    setMessage({
-      text: data.message,
-      type: data.message.toLowerCase().includes("success") ? "success" : "error"
-    });
-
-    // ✅ FINAL FIX
-    if (mode === "login" && data.message === "Login success") {
-
-      // 🔥 CLEAN START
-      localStorage.clear();
-
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userType", userType);
-      localStorage.setItem("userName", data.user?.name || "");
-
-      if (userType === "student") {
-        localStorage.setItem("studentData", JSON.stringify(data.user));
-
-        setTimeout(() => {
-          window.location.replace("/student-dashboard");
-        }, 1200);
-
-      } else {
-        setTimeout(() => {
-          window.location.replace("/");
-        }, 1200);
-      }
+    if (role === "admin") {
+      url = "http://localhost:5000/api/auth/send-otp";
+    } else if (role === "student") {
+      url = "http://localhost:5000/api/student/send-otp";
+    } else {
+      url = "http://localhost:5000/api/teacher-auth/send-otp";
     }
 
-    if (mode === "register" && data.message.includes("success")) {
-      setTimeout(() => setMode("login"), 1000);
+    try {
+      setLoadingOtp(true);
+
+      showMessage("Sending OTP... ⏳", "info");
+
+      await axios.post(url, { email: data.email, mode: "forgot" });
+
+      showMessage("OTP Sent 📩");
+      setStep("otp");
+
+    } catch {
+      showMessage("OTP failed ❌", "error");
+    } finally {
+      setLoadingOtp(false);
+    }
+  };
+
+  const verifyOtp = () => {
+    if (!otp) return showMessage("Enter OTP", "error");
+    setStep("reset");
+  };
+
+  const resetPassword = async () => {
+
+    let url = "";
+
+    if (role === "admin") {
+      url = "http://localhost:5000/api/auth/reset";
+    } else if (role === "student") {
+      url = "http://localhost:5000/api/student/reset";
+    } else {
+      url = "http://localhost:5000/api/teacher-auth/reset";
     }
 
-  } catch {
-    setMessage({ text: "Server error", type: "error" });
-  }
+    const res = await axios.post(url, {
+      email: data.email,
+      otp,
+      newPassword: newPass
+    });
 
-  setLoading(false);
-};
+    showMessage(res.data.message);
+    setStep("login");
+  };
+
+  if (showRegister) {
+    return <Register role={role} goBack={() => setShowRegister(false)} />;
+  }
 
   return (
-    <div key={key} style={wrapper}>
-      <div style={card}>
+    <div className="login-container">
 
-        {/* SWITCH */}
-        <div style={switchBox}>
-          <button style={userType === "admin" ? activeBtn : btn}
-            onClick={() => { setUserType("admin"); setKey(prev => prev + 1); }}>
-            Admin
-          </button>
+      {toastMsg && <Toast message={toastMsg} type={toastType} />}
 
-          <button style={userType === "student" ? activeBtn : btn}
-            onClick={() => { setUserType("student"); setKey(prev => prev + 1); }}>
-            Student
+      <div className="login-box">
+
+        {/* LEFT */}
+        <div className="login-left">
+          <h1>Welcome Back 👋</h1>
+          <p>Smart timetable & classroom system</p>
+
+          <button onClick={() => setStep("login")}>SIGN IN</button>
+
+          <button className="outline" onClick={() => setShowRegister(true)}>
+            CREATE ACCOUNT
           </button>
         </div>
 
-        <h2>{mode === "login" ? "Login" : mode === "register" ? "Create Account" : "Reset Password"}</h2>
+        {/* RIGHT */}
+        <div className="login-right">
 
-        {/* MESSAGE */}
-        {message.text && (
-          <div style={{
-            background:
-              message.type === "success" ? "#dcfce7" :
-              message.type === "error" ? "#fee2e2" : "#e2e8f0",
-            padding: "10px",
-            borderRadius: "6px",
-            marginBottom: "10px"
-          }}>
-            {message.text}
-          </div>
-        )}
+          <h2>{role.toUpperCase()} LOGIN</h2>
 
-        {/* REGISTER */}
-        {mode === "register" && step === 1 && (
-          <>
-            <input name="name" placeholder="Name *" onChange={handleChange} style={input} />
+          {step === "login" && (
+            <>
+              <input name="email" placeholder="Email" onChange={handleChange} />
 
-            {userType === "admin" && (
-              <>
-                <input name="phone" placeholder="Phone *" onChange={handleChange} style={input} />
-                <input name="address" placeholder="Address *" onChange={handleChange} style={input} />
-                <input name="college" placeholder="College *" onChange={handleChange} style={input} />
-              </>
-            )}
+              <div className="password-box">
+                <input
+                  type={show ? "text" : "password"}
+                  name="password"
+                  placeholder="Password"
+                  onChange={handleChange}
+                />
+                <span onClick={() => setShow(!show)}>
+                  {show ? <FaEyeSlash /> : <FaEye />}
+                </span>
+              </div>
 
-            {userType === "student" && (
-              <>
-                <input name="college" placeholder="College *" onChange={handleChange} style={input} />
-                <input name="department" placeholder="Department *" onChange={handleChange} style={input} />
-                <input name="course" placeholder="Course *" onChange={handleChange} style={input} />
-                <input name="section" placeholder="Section *" onChange={handleChange} style={input} />
+              <span
+  style={{ color: "#2563eb", cursor: "pointer", fontWeight: "500" }}
+  onClick={() => setStep("email")}
+>
+  Forgot password?
+</span>
 
-                <select name="gender" onChange={handleChange} style={input}>
-                  <option value="">Select Gender *</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                </select>
-              </>
-            )}
+              <button className="main-btn" onClick={handleLogin} disabled={loadingLogin}>
+                {loadingLogin ? "Logging in..." : "LOGIN"}
+              </button>
+            </>
+          )}
 
-            <div style={{ position: "relative" }}>
-              <input type={showPassword ? "text" : "password"}
-                name="password"
-                placeholder="Password *"
-                onChange={handleChange}
-                style={input} />
-              <span style={eye} onClick={() => setShowPassword(!showPassword)}>👁</span>
-            </div>
-          </>
-        )}
+          {step === "email" && (
+            <>
+              <input name="email" placeholder="Email" onChange={handleChange} />
 
-        <input name="email" placeholder="Email *" onChange={handleChange} style={input} />
+              <button
+                className="main-btn" 
+                onClick={sendOtp}
+                disabled={loadingOtp}
+              >
+                {loadingOtp ? "Sending..." : "Send OTP"}
+              </button>
+            </>
+          )}
 
-        {mode === "login" && (
-          <div style={{ position: "relative" }}>
-            <input type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password *"
-              onChange={handleChange}
-              style={input} />
-            <span style={eye} onClick={() => setShowPassword(!showPassword)}>👁</span>
-          </div>
-        )}
+          {step === "otp" && (
+            <>
+              <input placeholder="OTP" onChange={(e) => setOtp(e.target.value)} />
 
-        {(mode !== "login" && step === 2) && (
-          <>
-            <input name="otp" placeholder="Enter OTP *" onChange={handleChange} style={input} />
-            {mode === "forgot" && (
-              <input name="newPassword" placeholder="New Password *" onChange={handleChange} style={input} />
-            )}
-          </>
-        )}
+              <button className="main-btn" onClick={verifyOtp}>
+                Verify OTP
+              </button>
+            </>
+          )}
 
-        {mode === "login" && (
-          <button onClick={handleSubmit} style={mainBtn}>Login</button>
-        )}
+          {step === "reset" && (
+            <>
+              <input placeholder="New Password" onChange={(e) => setNewPass(e.target.value)} />
 
-        {(mode !== "login" && step === 1) && (
-          <button onClick={sendOtp} style={mainBtn}>Send OTP</button>
-        )}
+              <button className="main-btn" onClick={resetPassword}>
+                Update Password
+              </button>
+            </>
+          )}
 
-        {(mode !== "login" && step === 2) && (
-          <button onClick={handleSubmit} style={mainBtn}>Submit</button>
-        )}
-
-        {mode === "login" && (
-          <>
-            <p style={link} onClick={() => setMode("forgot")}>Forgot Password?</p>
-            <p style={link} onClick={() => setMode("register")}>Create Account</p>
-          </>
-        )}
-
-        {mode !== "login" && (
-          <p style={link} onClick={() => setMode("login")}>Back to Login</p>
-        )}
+        </div>
 
       </div>
     </div>
   );
 }
-
-const eye = { position: "absolute", right: "10px", top: "12px", cursor: "pointer" };
-const wrapper = { height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "linear-gradient(135deg,#1e293b,#2563eb)" };
-const card = { background: "white", padding: "30px", borderRadius: "15px", width: "350px", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" };
-const input = { width: "100%", padding: "12px", margin: "8px 0", borderRadius: "8px", border: "1px solid #ccc" };
-const mainBtn = { width: "100%", padding: "12px", marginTop: "10px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" };
-const switchBox = { display: "flex", marginBottom: "15px" };
-const btn = { flex: 1, padding: "10px", background: "#e2e8f0", border: "none" };
-const activeBtn = { flex: 1, padding: "10px", background: "#2563eb", color: "white", border: "none" };
-const link = { marginTop: "10px", color: "#2563eb", cursor: "pointer", fontSize: "14px" };
 
 export default Login;

@@ -36,6 +36,7 @@ app.use("/api/timetable", timetableRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/sections", sectionRoutes);
+app.use("/api/teacher-auth", require("./routes/teacherAuth"));
 
 // 🔥 AUTH
 app.use("/api/auth", authRoutes); // Admin login

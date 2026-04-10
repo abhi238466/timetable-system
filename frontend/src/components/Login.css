@@ -1,0 +1,176 @@
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* 🔥 PREMIUM BACKGROUND */
+.login-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #dbeafe, #f8fafc);
+  position: relative;
+}
+
+/* floating shapes */
+.login-container::before {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: #c7d2fe;
+  border-radius: 50%;
+  top: -100px;
+  left: -100px;
+  opacity: 0.4;
+}
+
+.login-container::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: #e0e7ff;
+  border-radius: 50%;
+  bottom: -80px;
+  right: -80px;
+  opacity: 0.5;
+}
+
+/* CARD */
+.login-box {
+  width: 1000px;
+  height: 560px;
+  display: flex;
+  border-radius: 20px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+
+/* LEFT */
+.login-left {
+  flex: 1;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px;
+}
+
+.login-left button {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 30px;
+  border: none;
+  background: rgba(255,255,255,0.25);
+  color: white;
+  cursor: pointer;
+}
+
+.login-left .outline {
+  background: transparent;
+  border: 1px solid white;
+}
+
+/* RIGHT */
+.login-right {
+  flex: 1;
+  padding: 60px;
+}
+
+/* 🔥 ADMIN TITLE */
+.admin-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 🔥 ADMIN ICON SIZE FIX */
+.admin-icon {
+  font-size: 26px;
+  color: #6366f1;
+}
+
+/* SUBTITLE */
+.subtitle {
+  color: #64748b;
+}
+
+/* INPUT BOX */
+.input-box {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 10px;
+  margin: 12px 0;
+  padding: 0 14px;
+  height: 50px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 🔥 MAIN INPUT FIX */
+.input-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  height: 100%;
+  font-size: 14px;
+  width: 100%;
+
+  /* ❌ REMOVE ZOOM BUG */
+  transform: none !important;
+  scale: 1 !important;
+}
+
+/* 🔥 AUTOFILL BUG FIX (IMPORTANT) */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  box-shadow: 0 0 0 1000px #f8fafc inset !important;
+}
+
+/* ICON */
+.icon {
+  margin-right: 10px;
+  color: #64748b;
+}
+
+/* PASSWORD EYE */
+.input-box span {
+  cursor: pointer;
+}
+
+/* SIMPLE INPUT (OTP / RESET) */
+.simple-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  margin: 10px 0;
+  outline: none;
+}
+
+/* BUTTON */
+.main-btn {
+  background: linear-gradient(45deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 14px;
+  border-radius: 30px;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+/* FORGOT */
+.forgot-row {
+  text-align: right;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #2563eb;
+}

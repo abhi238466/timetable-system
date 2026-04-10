@@ -1,37 +1,26 @@
 import React, { useEffect, useState } from "react";
-import "../App.css";
 
 function DepartmentPage() {
 
   const [departments, setDepartments] = useState([]);
   const [name, setName] = useState("");
+  const [search, setSearch] = useState("");
 
   const [msg, setMsg] = useState("");
   const [type, setType] = useState("");
 
-  // 🔥 AUTO HIDE MESSAGE
   useEffect(() => {
     if (msg) {
-      const timer = setTimeout(() => {
-        setMsg("");
-      }, 3000);
-
+      const timer = setTimeout(() => setMsg(""), 3000);
       return () => clearTimeout(timer);
     }
   }, [msg]);
 
-  // 🔥 FETCH
   const fetchDepartments = async () => {
     try {
       const res = await fetch("http://localhost:5000/api/departments");
       const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setDepartments(data);
-      } else {
-        setDepartments([]);
-      }
-
+      setDepartments(Array.isArray(data) ? data : []);
     } catch {
       setDepartments([]);
     }
@@ -41,7 +30,6 @@ function DepartmentPage() {
     fetchDepartments();
   }, []);
 
-  // 🔥 ADD
   const addDepartment = async () => {
 
     if (!name.trim()) {
@@ -50,12 +38,20 @@ function DepartmentPage() {
       return;
     }
 
+    const exists = departments.some(
+      d => d.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (exists) {
+      setMsg("Department already exists ❌");
+      setType("error");
+      return;
+    }
+
     try {
       const res = await fetch("http://localhost:5000/api/departments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name })
       });
 
@@ -73,17 +69,13 @@ function DepartmentPage() {
     }
   };
 
-  // 🔥 DELETE
   const deleteDepartment = async (id) => {
-
     try {
-      const res = await fetch(`http://localhost:5000/api/departments/${id}`, {
+      await fetch(`http://localhost:5000/api/departments/${id}`, {
         method: "DELETE"
       });
 
-      const data = await res.json();
-
-      setMsg(data.message || "Deleted successfully ✅");
+      setMsg("Deleted successfully ✅");
       setType("success");
 
       fetchDepartments();
@@ -94,59 +86,64 @@ function DepartmentPage() {
     }
   };
 
+  const filtered = departments.filter(dep =>
+    dep.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
 
-    <div className="container">
+    <div className="dept-container">
 
-      <h2>🏫 Department Management</h2>
+      {/* 🔥 HEADER */}
+      <div className="dept-header">
+        <h2>🏫 Department Management</h2>
+        <p>Smartly manage all departments</p>
+      </div>
 
-      {/* 🔥 MESSAGE */}
+      {/* MESSAGE */}
       {msg && (
-        <div
-          style={{
-            padding: "10px",
-            marginBottom: "15px",
-            borderRadius: "6px",
-            color: "white",
-            background: type === "success" ? "#16a34a" : "#dc2626"
-          }}
-        >
+        <div className={`dept-msg ${type}`}>
           {msg}
         </div>
       )}
 
       {/* FORM */}
-      <div className="card">
-
+      <div className="dept-form">
         <input
-          placeholder="Department Name"
+          placeholder="Enter department name..."
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="input"
         />
 
         <button onClick={addDepartment}>
-          + Add Department
+          ➕ Add Department
         </button>
-
       </div>
 
-      {/* LIST */}
-      <div className="grid">
+      {/* SEARCH */}
+      <input
+        className="dept-search"
+        placeholder="🔍 Search department..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-        {departments.length === 0 ? (
-          <p>No Departments</p>
+      {/* GRID */}
+      <div className="dept-grid">
+
+        {filtered.length === 0 ? (
+          <p className="empty">No Departments Found</p>
         ) : (
-          departments.map(dep => (
-            <div key={dep._id} className="card">
+          filtered.map(dep => (
+            <div key={dep._id} className="dept-card">
 
               <h3>{dep.name}</h3>
 
               <button
-                className="btn-danger"
+                className="delete-btn"
                 onClick={() => deleteDepartment(dep._id)}
               >
-                Delete
+                🗑 Delete
               </button>
 
             </div>
@@ -154,6 +151,160 @@ function DepartmentPage() {
         )}
 
       </div>
+
+      {/* 🔥 ADVANCED CSS */}
+      <style>{`
+
+      .dept-container {
+        padding: 30px;
+        border-radius: 16px;
+        background: linear-gradient(135deg,#eef2ff,#f8fafc);
+      }
+
+      /* HEADER */
+      .dept-header {
+        margin-bottom: 25px;
+      }
+
+      .dept-header h2 {
+        font-size: 28px;
+        font-weight: 700;
+        background: linear-gradient(90deg,#4f46e5,#06b6d4);
+        -webkit-background-clip: text;
+         color: black;
+      }
+
+      .dept-header p {
+        color: #64748b;
+      }
+
+      /* MESSAGE */
+      .dept-msg {
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: white;
+        font-weight: 500;
+      }
+
+      .dept-msg.success {
+        background: linear-gradient(135deg,#22c55e,#16a34a);
+      }
+
+      .dept-msg.error {
+        background: linear-gradient(135deg,#ef4444,#dc2626);
+      }
+
+      /* FORM */
+      .dept-form {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .dept-form input {
+        flex: 1;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid #cbd5f5;
+        background: rgba(255,255,255,0.6);
+        backdrop-filter: blur(8px);
+        transition: 0.3s;
+      }
+
+      .dept-form input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 10px rgba(99,102,241,0.3);
+      }
+
+      .dept-form button {
+        padding: 14px 20px;
+        border-radius: 12px;
+        background: linear-gradient(135deg,#6366f1,#4f46e5);
+        color: white;
+        font-weight: 500;
+        border: none;
+        transition: 0.3s;
+      }
+
+      .dept-form button:hover {
+        transform: scale(1.05);
+      }
+
+      /* SEARCH */
+      .dept-search {
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        border: 1px solid #cbd5f5;
+        background: white;
+      }
+
+      /* GRID */
+      .dept-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit,minmax(260px,1fr));
+        gap: 22px;
+      }
+
+      /* CARD */
+      .dept-card {
+        padding: 25px;
+        border-radius: 16px;
+        text-align: center;
+        background: rgba(255,255,255,0.6);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        transition: 0.4s;
+        position: relative;
+      }
+
+      .dept-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        padding: 1px;
+        background: linear-gradient(135deg,#6366f1,#06b6d4);
+        -webkit-mask:
+          linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+
+      .dept-card:hover {
+        transform: translateY(-8px) scale(1.04);
+      }
+
+      .dept-card h3 {
+        font-size: 18px;
+        margin-bottom: 15px;
+      }
+
+      /* DELETE */
+      .delete-btn {
+        background: linear-gradient(135deg,#ef4444,#dc2626);
+        padding: 10px 18px;
+        border-radius: 10px;
+        color: white;
+        border: none;
+        transition: 0.3s;
+      }
+
+      .delete-btn:hover {
+        transform: scale(1.1);
+      }
+
+      /* EMPTY */
+      .empty {
+        text-align: center;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      `}</style>
 
     </div>
   );

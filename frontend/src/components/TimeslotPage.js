@@ -7,6 +7,9 @@ function TimeslotPage() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
+  const [msg, setMsg] = useState("");
+  const [type, setType] = useState("");
+
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   // 🔥 FETCH
@@ -20,16 +23,35 @@ function TimeslotPage() {
     fetchSlots();
   }, []);
 
+  // 🔥 AUTO MSG
+  useEffect(() => {
+    if (msg) {
+      const t = setTimeout(() => setMsg(""), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [msg]);
+
+  // 🔥 TIME FORMAT (AM/PM)
+  const formatTime = (time) => {
+    const [h, m] = time.split(":");
+    let hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    return `${hour}:${m} ${ampm}`;
+  };
+
   // 🔥 ADD SLOT
   const addSlot = async () => {
 
     if (!startTime || !endTime) {
-      alert("⚠️ Fill all fields");
+      setMsg("Fill all fields ❌");
+      setType("error");
       return;
     }
 
     if (startTime >= endTime) {
-      alert("⚠️ End time must be greater than start time");
+      setMsg("End time must be greater ❌");
+      setType("error");
       return;
     }
 
@@ -38,7 +60,8 @@ function TimeslotPage() {
     );
 
     if (exists) {
-      alert("⚠️ Slot already exists!");
+      setMsg("Slot already exists ❌");
+      setType("error");
       return;
     }
 
@@ -50,17 +73,23 @@ function TimeslotPage() {
       body: JSON.stringify({ day, startTime, endTime })
     });
 
+    setMsg("Slot Added ✅");
+    setType("success");
+
     setStartTime("");
     setEndTime("");
 
     fetchSlots();
   };
 
-  // 🔥 DELETE SLOT (NEW)
+  // 🔥 DELETE
   const deleteSlot = async (id) => {
     await fetch(`http://localhost:5000/api/timeslots/${id}`, {
       method: "DELETE"
     });
+
+    setMsg("Deleted ✅");
+    setType("success");
 
     fetchSlots();
   };
@@ -69,14 +98,21 @@ function TimeslotPage() {
 
   return (
 
-    <div>
+    <div className="timeslot-container">
 
-      <h2 style={title}>⏰ Timeslot Management</h2>
+      {/* HEADER */}
+      <div className="timeslot-header">
+        <h2>⏰ Timeslot Management</h2>
+        <p>Create and manage time slots efficiently</p>
+      </div>
+
+      {/* MESSAGE */}
+      {msg && <div className={`msg ${type}`}>{msg}</div>}
 
       {/* FORM */}
-      <div style={form}>
+      <div className="timeslot-form">
 
-        <select value={day} onChange={(e) => setDay(e.target.value)} style={input}>
+        <select value={day} onChange={(e) => setDay(e.target.value)}>
           {days.map(d => <option key={d}>{d}</option>)}
         </select>
 
@@ -84,45 +120,39 @@ function TimeslotPage() {
           type="time"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
-          style={input}
         />
 
         <input
           type="time"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
-          style={input}
         />
 
-        <button style={btn} onClick={addSlot}>
-          + Add Slot
-        </button>
+        <button onClick={addSlot}>+ Add Slot</button>
 
       </div>
 
-      <div style={info}>
+      <div className="info">
         Showing slots for: <b>{day}</b>
       </div>
 
-      <div style={grid}>
+      {/* GRID */}
+      <div className="grid">
 
         {filteredSlots.length === 0 ? (
-          <div style={empty}>
-            No slots for {day}
-          </div>
+          <div className="empty">No slots for {day}</div>
         ) : (
           filteredSlots.map(slot => (
-            <div key={slot._id} style={card}>
+            <div key={slot._id} className="card">
 
-              <h3 style={{ marginBottom: "10px" }}>{slot.day}</h3>
+              <h3>{slot.day}</h3>
 
-              <p style={{ fontSize: "15px" }}>
-                🕒 {slot.startTime} - {slot.endTime}
+              <p>
+                🕒 {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
               </p>
 
-              {/* 🔥 DELETE BUTTON (NEW) */}
               <button
-                style={deleteBtn}
+                className="delete-btn"
                 onClick={() => deleteSlot(slot._id)}
               >
                 Delete
@@ -134,83 +164,106 @@ function TimeslotPage() {
 
       </div>
 
+      {/* 🔥 CSS */}
+      <style>{`
+
+      .timeslot-container {
+        padding: 30px;
+        background: linear-gradient(135deg,#eef2ff,#f8fafc);
+        border-radius: 16px;
+      }
+
+      .timeslot-header h2 {
+        font-size: 28px;
+        font-weight: 700;
+        background: linear-gradient(90deg,#4f46e5,#06b6d4);
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .timeslot-header p {
+        color: #64748b;
+      }
+
+      .msg {
+        padding: 12px;
+        border-radius: 10px;
+        margin: 15px 0;
+        color: white;
+      }
+
+      .msg.success { background:#16a34a; }
+      .msg.error { background:#dc2626; }
+
+      .timeslot-form {
+        display: flex;
+        gap: 12px;
+        background: white;
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        flex-wrap: wrap;
+      }
+
+      .timeslot-form select,
+      .timeslot-form input {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #cbd5f5;
+      }
+
+      .timeslot-form button {
+        background: linear-gradient(135deg,#6366f1,#4f46e5);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 10px;
+      }
+
+      .info {
+        margin: 20px 0;
+        color: #475569;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: linear-gradient(145deg,#ffffff,#eef2ff);
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        transition: 0.3s;
+      }
+
+      .card:hover {
+        transform: translateY(-8px) scale(1.03);
+      }
+
+      .delete-btn {
+        margin-top: 10px;
+        background: linear-gradient(135deg,#ef4444,#dc2626);
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+      }
+
+      .empty {
+        padding: 25px;
+        text-align: center;
+        background: #f1f5f9;
+        border-radius: 10px;
+        grid-column: 1/-1;
+      }
+
+      `}</style>
+
     </div>
-
   );
-
 }
-
-/* 🔥 STYLES */
-
-const deleteBtn = {
-  marginTop: "10px",
-  background: "#ef4444",
-  color: "white",
-  border: "none",
-  padding: "8px 12px",
-  borderRadius: "6px",
-  cursor: "pointer"
-};
-
-const title = {
-  marginBottom: "25px",
-  fontSize: "22px"
-};
-
-const form = {
-  display: "flex",
-  gap: "15px",
-  marginBottom: "20px",
-  padding: "20px",
-  background: "white",
-  borderRadius: "12px",
-  boxShadow: "0 6px 15px rgba(0,0,0,0.08)",
-  alignItems: "center"
-};
-
-const input = {
-  padding: "10px",
-  borderRadius: "8px",
-  border: "1px solid #ccc",
-  minWidth: "120px"
-};
-
-const btn = {
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const info = {
-  marginBottom: "15px",
-  fontSize: "14px",
-  color: "#475569"
-};
-
-const grid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-  gap: "20px"
-};
-
-const card = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow: "0 6px 15px rgba(0,0,0,0.08)",
-  borderLeft: "5px solid #2563eb"
-};
-
-const empty = {
-  padding: "30px",
-  background: "#f1f5f9",
-  borderRadius: "10px",
-  textAlign: "center",
-  gridColumn: "1/-1"
-};
 
 export default TimeslotPage;

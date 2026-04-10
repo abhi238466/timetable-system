@@ -15,14 +15,22 @@ function StudentDashboard() {
 
   const studentName = localStorage.getItem("studentName");
 
-  // 🔥 FETCH DATA
+  // ✅ AUTO HIDE MESSAGE (3 sec)
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     fetch("http://localhost:5000/api/departments").then(res => res.json()).then(setDepartments);
     fetch("http://localhost:5000/api/courses").then(res => res.json()).then(setCourses);
     fetch("http://localhost:5000/api/sections").then(res => res.json()).then(setSections);
   }, []);
 
-  // 🔥 FILTER
   const filteredCourses = courses.filter(c =>
     !selectedDept || c.department?.name === selectedDept
   );
@@ -31,7 +39,6 @@ function StudentDashboard() {
     !selectedCourse || s.course?.name === selectedCourse
   );
 
-  // 🔥 FETCH TIMETABLE
   const fetchTimetable = async () => {
     if (!selectedSection) {
       setMessage("⚠️ Select section");
@@ -47,37 +54,36 @@ function StudentDashboard() {
       );
 
       setTimetable(filtered);
-      setMessage(filtered.length ? "✅ Loaded" : "❌ No timetable");
+      setMessage(filtered.length ? "✅ Timetable Loaded" : "❌ No timetable found");
 
     } catch {
-      setMessage("❌ Error");
+      setMessage("❌ Error loading timetable");
     }
   };
 
-  // 🔥 DAYS
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const logout = () => {
+    localStorage.removeItem("studentName");
+    window.location.href = "/login/student";
+  };
 
-  // 🔥 SORTED TIMES
-  const times = [
-    ...new Set(
-      timetable.map(t => `${t.timeslot?.startTime}-${t.timeslot?.endTime}`)
-    )
-  ].sort((a, b) => {
-    const getStart = (t) => t.split("-")[0];
-    return getStart(a).localeCompare(getStart(b));
-  });
+  const goHome = () => {
+    window.location.href = "/";
+  };
 
-  // 🔥 GRID
+  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+  const times = [...new Set(
+    timetable.map(t => `${t.timeslot?.startTime}-${t.timeslot?.endTime}`)
+  )];
+
   const grid = {};
   timetable.forEach(item => {
     const day = item.timeslot?.day;
     const time = `${item.timeslot?.startTime}-${item.timeslot?.endTime}`;
-
     if (!grid[day]) grid[day] = {};
     grid[day][time] = item;
   });
 
-  // 🎨 COLOR
   const getColor = (type) => {
     if (type === "lab") return "#fef3c7";
     if (type === "theory") return "#dbeafe";
@@ -85,12 +91,20 @@ function StudentDashboard() {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={container}>
 
       {/* HEADER */}
       <div style={header}>
-        <h2>🎓 Student Dashboard</h2>
-        <p>Welcome, {studentName || "Student"} 👋</p>
+        <div>
+          <h2>📅 Smart Timetable Dashboard</h2>
+          <p>Welcome, {studentName || "Student"} 👋</p>
+        </div>
+
+        {/* ✅ NEW BUTTONS */}
+        <div style={{ display:"flex", gap:"10px" }}>
+          <button style={homeBtn} onClick={goHome}>🏠 Home</button>
+          <button style={logoutBtn} onClick={logout}>🚪 Logout</button>
+        </div>
       </div>
 
       {/* MESSAGE */}
@@ -99,90 +113,73 @@ function StudentDashboard() {
       {/* FILTER */}
       <div style={card}>
 
-        <select value={selectedDept} onChange={(e)=>setSelectedDept(e.target.value)} style={input}>
-          <option value="">Select Department</option>
-          {departments.map(d=> <option key={d._id}>{d.name}</option>)}
-        </select>
+        <h3>🎯 Select Filters</h3>
 
-        <select value={selectedCourse} onChange={(e)=>setSelectedCourse(e.target.value)} style={input}>
-          <option value="">Select Course</option>
-          {filteredCourses.map(c=> <option key={c._id}>{c.name}</option>)}
-        </select>
+        <div style={grid3}>
+          <select value={selectedDept} onChange={(e)=>setSelectedDept(e.target.value)} style={input}>
+            <option value="">Department</option>
+            {departments.map(d=> <option key={d._id}>{d.name}</option>)}
+          </select>
 
-        <select value={selectedSection} onChange={(e)=>setSelectedSection(e.target.value)} style={input}>
-          <option value="">Select Section</option>
-          {filteredSections.map(s=> <option key={s._id}>{s.name}</option>)}
-        </select>
+          <select value={selectedCourse} onChange={(e)=>setSelectedCourse(e.target.value)} style={input}>
+            <option value="">Course</option>
+            {filteredCourses.map(c=> <option key={c._id}>{c.name}</option>)}
+          </select>
 
-        <button onClick={fetchTimetable} style={btn}>
-          🚀 View Timetable
-        </button>
+          <select value={selectedSection} onChange={(e)=>setSelectedSection(e.target.value)} style={input}>
+            <option value="">Section</option>
+            {filteredSections.map(s=> <option key={s._id}>{s.name}</option>)}
+          </select>
+        </div>
 
-        {/* PRINT */}
-        <button onClick={() => window.print()} style={printBtn}>
-          🖨 Print Timetable
-        </button>
+        <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
+          <button onClick={fetchTimetable} style={btn}>
+            🚀 View Timetable
+          </button>
+
+          <button onClick={() => window.print()} style={printBtn}>
+            🖨 Print
+          </button>
+        </div>
 
       </div>
 
-      {/* 🔥 GRID TABLE */}
+      {/* TABLE */}
       {timetable.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
+        <div style={tableWrapper}>
           <table style={table}>
             <thead>
-              <tr style={{ background: "#1e40af", color: "white" }}>
-                <th style={th}>DAY / TIME</th>
-                {times.map((t, i) => (
-                  <th key={i} style={th}>{t}</th>
-                ))}
+              <tr style={{ background: "#1e3a8a", color: "white" }}>
+                <th style={th}>Day / Time</th>
+                {times.map((t, i) => <th key={i} style={th}>{t}</th>)}
               </tr>
             </thead>
 
             <tbody>
-              {days.map((day, i) => (
-                <tr key={i}>
-                  <td style={{ ...td, fontWeight: "bold", background: "#f1f5f9" }}>
-                    {day}
-                  </td>
+              {days.map(day => (
+                <tr key={day}>
+                  <td style={{ ...td, fontWeight: "bold" }}>{day}</td>
 
-                  {times.map((time, j) => {
+                  {times.map(time => {
                     const item = grid[day]?.[time];
 
-                    if (!item) {
-                      return (
-                        <td key={j} style={{ ...td, background: "#f1f5f9" }}>
-                          FREE
-                        </td>
-                      );
-                    }
-
                     return (
-                      <td
-                        key={j}
-                        style={{
-                          ...td,
-                          background: getColor(item.subject?.type)
-                        }}
-                      >
-                        <b>{item.subject?.name}</b><br />
-
-                        👨‍🏫 {
-                          item.teacher && item.teacher.length > 0
-                            ? item.teacher.map(t => t.name).join(", ")
-                            : "N/A"
-                        }<br />
-
-                        🏫 {item.room?.name || "N/A"}<br />
-
-                        📚 {
-                          item.sections?.map(s => s.name).join(", ")
-                        }
+                      <td key={time} style={{ ...td, background: getColor(item?.subject?.type) }}>
+                        {item ? (
+                          <>
+                            <b>{item.subject?.name}</b><br/>
+                            👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}<br/>
+                            🏫 {item.room?.name}<br/>
+                            📚 {item.sections?.map(s => s.name).join(", ")}
+                          </>
+                        ) : "FREE"}
                       </td>
                     );
                   })}
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       )}
@@ -191,72 +188,79 @@ function StudentDashboard() {
   );
 }
 
-// 🎨 STYLES
+/* STYLES */
+
+const container = { padding:"30px", background:"#f1f5f9" };
+
 const header = {
-  background: "#2563eb",
-  color: "white",
-  padding: "15px",
-  borderRadius: "10px",
-  marginBottom: "20px"
+  display:"flex",
+  justifyContent:"space-between",
+  alignItems:"center",
+  background:"linear-gradient(45deg,#4f46e5,#6366f1)",
+  color:"white",
+  padding:"20px",
+  borderRadius:"12px"
 };
 
 const msg = {
-  background: "#dcfce7",
-  padding: "10px",
-  marginBottom: "10px",
-  borderRadius: "6px"
+  background:"#dcfce7",
+  padding:"10px",
+  marginTop:"10px",
+  borderRadius:"8px"
 };
 
 const card = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "10px",
-  marginBottom: "20px",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+  background:"white",
+  padding:"20px",
+  borderRadius:"12px",
+  marginTop:"20px"
 };
 
-const input = {
-  width: "100%",
-  marginBottom: "10px",
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc"
+const grid3 = {
+  display:"grid",
+  gridTemplateColumns:"repeat(3,1fr)",
+  gap:"10px"
 };
+
+const input = { padding:"10px", borderRadius:"8px" };
 
 const btn = {
-  width: "100%",
-  padding: "10px",
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  marginBottom: "10px",
-  borderRadius: "6px"
+  flex:1,
+  background:"#6366f1",
+  color:"white",
+  padding:"10px",
+  border:"none",
+  borderRadius:"8px"
 };
 
 const printBtn = {
-  width: "100%",
-  padding: "10px",
-  background: "#16a34a",
-  color: "white",
-  border: "none",
-  borderRadius: "6px"
+  flex:1,
+  background:"#16a34a",
+  color:"white",
+  padding:"10px",
+  border:"none",
+  borderRadius:"8px"
 };
 
-const table = {
-  width: "100%",
-  borderCollapse: "collapse",
-  background: "white"
+const homeBtn = {
+  background:"#22c55e",
+  color:"white",
+  padding:"8px 12px",
+  border:"none",
+  borderRadius:"8px"
 };
 
-const th = {
-  border: "1px solid #ccc",
-  padding: "10px"
+const logoutBtn = {
+  background:"#ef4444",
+  color:"white",
+  padding:"8px 12px",
+  border:"none",
+  borderRadius:"8px"
 };
 
-const td = {
-  border: "1px solid #ddd",
-  padding: "10px",
-  textAlign: "center"
-};
+const tableWrapper = { marginTop:"20px" };
+const table = { width:"100%", borderCollapse:"collapse" };
+const th = { padding:"10px" };
+const td = { padding:"10px", textAlign:"center" };
 
 export default StudentDashboard;

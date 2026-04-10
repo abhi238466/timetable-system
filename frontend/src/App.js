@@ -1,155 +1,120 @@
-import React, { useState, useEffect } from "react";
-import { Routes, Route, Link } from "react-router-dom";
-import "./App.css";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-import Navbar from "./components/Navbar";
-import TeacherForm from "./components/TeacherForm";
-import SubjectForm from "./components/SubjectForm";
-import TimetableGrid from "./components/TimetableGrid";
-import GeneratePage from "./components/GeneratePage";
-import RoomPage from "./components/RoomPage";
-import TimeslotPage from "./components/TimeslotPage";
-import Dashboard from "./components/Dashboard";
+import LandingPage from "./pages/LandingPage";
 import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+
 import StudentDashboard from "./components/StudentDashboard";
-import SectionPage from "./components/SectionPage";
-import CoursePage from "./components/CoursePage";
+import TeacherDashboard from "./components/TeacherDashboard";
+
 import DepartmentPage from "./components/DepartmentPage";
+import TeacherPage from "./components/TeacherForm";
+import SubjectPage from "./components/SubjectForm";
+import CoursePage from "./components/CoursePage";
+import RoomPage from "./components/RoomPage";
+import SectionPage from "./components/SectionPage";
+import TimeslotPage from "./components/TimeslotPage";
+import GeneratePage from "./components/GeneratePage";
+import TimetableGrid from "./components/TimetableGrid";
+
+import Layout from "./components/Layout"; // ✅ IMPORTANT
 
 function App() {
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userType, setUserType] = useState("");
-  const [loadingAuth, setLoadingAuth] = useState(true);
-
-  // 🔥 FIXED AUTH LOAD
-  useEffect(() => {
-    const status = localStorage.getItem("isLoggedIn");
-    const type = localStorage.getItem("userType");
-
-    if (status === "true") {
-      setIsLoggedIn(true);
-      setUserType(type);
-    }
-
-    setLoadingAuth(false);
-  }, []);
-
-  // 🔥 FIXED LOGOUT
-  const logout = () => {
-    localStorage.clear();
-    window.location.replace("/");
-  };
-
-  // 🔥 LOADING FIX (IMPORTANT)
-  if (loadingAuth) {
-    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
-  }
-
-  if (!isLoggedIn) {
-    return <Login setIsLoggedIn={setIsLoggedIn} />;
-  }
-
   return (
-    <div>
+    <Router>
 
-      <Navbar />
+      <Routes>
 
-      <div style={{ display: "flex" }}>
+        {/* 🔥 LANDING */}
+        <Route path="/" element={<LandingPage />} />
 
-        {/* ADMIN SIDEBAR */}
-        {userType === "admin" && (
-          <div style={{
-            width: "240px",
-            background: "#1e293b",
-            color: "white",
-            minHeight: "100vh",
-            padding: "20px"
-          }}>
+        {/* 🔥 LOGIN */}
+        <Route path="/login/admin" element={<Login />} />
+        <Route path="/login/student" element={<Login />} />
+        <Route path="/login/teacher" element={<Login />} />
 
-            <h2>📊 Admin Panel</h2>
+        {/* 🔥 DASHBOARDS */}
+        <Route path="/admin-dashboard" element={<Layout><Dashboard /></Layout>} />
+        <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
 
-            <SidebarLink to="/" label="Dashboard" />
-            <SidebarLink to="/departments" label="Departments" />
-            <SidebarLink to="/teachers" label="Teachers" />
-            <SidebarLink to="/subjects" label="Subjects" />
-            <SidebarLink to="/courses" label="Courses" />
-            <SidebarLink to="/rooms" label="Rooms" />
-            <SidebarLink to="/sections" label="Sections" />
-            <SidebarLink to="/timeslots" label="Timeslots" />
-            <SidebarLink to="/generate" label="Generate" />
-            <SidebarLink to="/timetable" label="Timetable" />
+        {/* 🔥 ADMIN SIDEBAR ROUTES ONLY */}
+        <Route path="/departments" element={<Layout><DepartmentPage /></Layout>} />
+        <Route path="/teachers" element={<Layout><TeacherPage /></Layout>} />
+        <Route path="/subjects" element={<Layout><SubjectPage /></Layout>} />
+        <Route path="/courses" element={<Layout><CoursePage /></Layout>} />
+        <Route path="/rooms" element={<Layout><RoomPage /></Layout>} />
+        <Route path="/sections" element={<Layout><SectionPage /></Layout>} />
+        <Route path="/timeslots" element={<Layout><TimeslotPage /></Layout>} />
+        <Route path="/generate" element={<Layout><GeneratePage /></Layout>} />
+        <Route path="/timetable" element={<Layout><TimetableGrid /></Layout>} />
 
-            <button onClick={logout} style={{ marginTop: "20px" }}>
-              Logout
-            </button>
+      </Routes>
 
-          </div>
-        )}
-
-        {/* STUDENT SIDEBAR */}
-        {userType === "student" && (
-          <div style={{
-            width: "200px",
-            background: "#1e293b",
-            color: "white",
-            minHeight: "100vh",
-            padding: "20px"
-          }}>
-            <h2>🎓 Student</h2>
-
-            <SidebarLink to="/student-dashboard" label="My Timetable" />
-
-            <button onClick={logout} style={{ marginTop: "20px" }}>
-              Logout
-            </button>
-          </div>
-        )}
-
-        {/* CONTENT */}
-        <div style={{ flex: 1, padding: "30px" }}>
-
-          <Routes>
-
-            {userType === "admin" && (
-              <>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/teachers" element={<TeacherForm />} />
-                <Route path="/subjects" element={<SubjectForm />} />
-                <Route path="/courses" element={<CoursePage />} />
-                <Route path="/rooms" element={<RoomPage />} />
-                <Route path="/sections" element={<SectionPage />} />
-                <Route path="/timeslots" element={<TimeslotPage />} />
-                <Route path="/generate" element={<GeneratePage />} />
-                <Route path="/timetable" element={<TimetableGrid />} />
-                <Route path="/departments" element={<DepartmentPage />} />
-              </>
-            )}
-
-            {userType === "student" && (
-              <Route path="/student-dashboard" element={<StudentDashboard />} />
-            )}
-
-            <Route path="*" element={<h2>Access Denied ❌</h2>} />
-
-          </Routes>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-function SidebarLink({ to, label }) {
-  return (
-    <p>
-      <Link to={to} style={{ color: "white", textDecoration: "none" }}>
-        {label}
-      </Link>
-    </p>
+    </Router>
   );
 }
 
 export default App;
+
+
+// import React from "react";
+// import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+// import LandingPage from "./pages/LandingPage";
+// import Login from "./components/Login";
+// import Dashboard from "./components/Dashboard";
+
+// // 🔥 ADD THESE (NEW)
+// import StudentDashboard from "./components/StudentDashboard";
+// import TeacherDashboard from "./components/TeacherDashboard";
+
+// import DepartmentPage from "./components/DepartmentPage";
+// import TeacherPage from "./components/TeacherForm";
+// import SubjectPage from "./components/SubjectForm";
+// import CoursePage from "./components/CoursePage";
+// import RoomPage from "./components/RoomPage";
+// import SectionPage from "./components/SectionPage";
+// import TimeslotPage from "./components/TimeslotPage";
+// import GeneratePage from "./components/GeneratePage";
+// import TimetableView from "./components/TimetableView";
+// import TimetableGrid from "./components/TimetableGrid";
+
+// function App() {
+//   return (
+//     <Router>
+
+//       <Routes>
+
+//         {/* 🔥 LANDING */}
+//         <Route path="/" element={<LandingPage />} />
+
+//         {/* 🔥 LOGIN ROUTES (FIXED) */}
+//         <Route path="/login/admin" element={<Login />} />
+//         <Route path="/login/student" element={<Login />} />
+//         <Route path="/login/teacher" element={<Login />} />
+
+//         {/* 🔥 DASHBOARDS */}
+//         <Route path="/admin-dashboard" element={<Dashboard />} />
+//         <Route path="/student-dashboard" element={<StudentDashboard />} />
+//         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+
+//         {/* 🔥 SIDEBAR ROUTES (AS IT IS) */}
+//         <Route path="/departments" element={<DepartmentPage />} />
+//         <Route path="/teachers" element={<TeacherPage />} />
+//         <Route path="/subjects" element={<SubjectPage />} />
+//         <Route path="/courses" element={<CoursePage />} />
+//         <Route path="/rooms" element={<RoomPage />} />
+//         <Route path="/sections" element={<SectionPage />} />
+//         <Route path="/timeslots" element={<TimeslotPage />} />
+//         <Route path="/generate" element={<GeneratePage />} />
+//         <Route path="/timetable" element={<TimetableGrid />} />
+
+//       </Routes>
+
+//     </Router>
+//   );
+// }
+
+// export default App;

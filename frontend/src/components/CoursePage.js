@@ -9,7 +9,13 @@ function CoursePage() {
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
 
-  // 🔥 FETCH DATA
+  const [searchDept, setSearchDept] = useState("");
+  const [searchCourse, setSearchCourse] = useState("");
+
+  const [msg, setMsg] = useState("");
+  const [type, setType] = useState("");
+
+  // 🔥 FETCH
   const fetchData = async () => {
     const c = await fetch("http://localhost:5000/api/courses");
     const d = await fetch("http://localhost:5000/api/departments");
@@ -22,11 +28,32 @@ function CoursePage() {
     fetchData();
   }, []);
 
-  // 🔥 ADD COURSE
+  // 🔥 MESSAGE AUTO HIDE
+  useEffect(() => {
+    if (msg) {
+      const t = setTimeout(() => setMsg(""), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [msg]);
+
+  // 🔥 ADD
   const addCourse = async () => {
 
     if (!name || !department) {
-      alert("Fill all fields");
+      setMsg("Fill all fields ❌");
+      setType("error");
+      return;
+    }
+
+    // 🔥 DUPLICATE CHECK
+    const exists = courses.some(c =>
+      c.name.toLowerCase() === name.toLowerCase() &&
+      c.department?._id === department
+    );
+
+    if (exists) {
+      setMsg("Course already exists ❌");
+      setType("error");
       return;
     }
 
@@ -35,11 +62,11 @@ function CoursePage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        name,
-        department
-      })
+      body: JSON.stringify({ name, department })
     });
+
+    setMsg("Course Added ✅");
+    setType("success");
 
     setName("");
     setDepartment("");
@@ -52,70 +79,214 @@ function CoursePage() {
     await fetch(`http://localhost:5000/api/courses/${id}`, {
       method: "DELETE"
     });
+
+    setMsg("Deleted ✅");
+    setType("success");
+
     fetchData();
   };
 
   return (
 
-    <div className="container">
+    <div className="container course-container">
 
-      <h2>📘 Course Management</h2>
+      {/* HEADER */}
+      <div className="course-header">
+        <h2>🎓 Course Management</h2>
+        <p>Manage courses with smart control</p>
+      </div>
+
+      {/* MESSAGE */}
+      {msg && <div className={`course-msg ${type}`}>{msg}</div>}
 
       {/* FORM */}
-      <div className="card">
+      <div className="course-form">
 
         <input
           placeholder="Course Name (MCA, BCA)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="input"
         />
 
-        <select
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          className="input"
-        >
-          <option value="">Select Department</option>
-          {departments.map(d => (
-            <option key={d._id} value={d._id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+        {/* 🔥 SEARCHABLE DEPARTMENT */}
+        <div className="course-dropdown">
+          <input
+            placeholder="🔍 Search Department..."
+            value={searchDept}
+            onChange={(e) => setSearchDept(e.target.value)}
+          />
 
-        <button onClick={addCourse}>
-          + Add Course
-        </button>
+          <select
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+          >
+            <option value="">Select Department</option>
+            {departments
+              .filter(d => d.name.toLowerCase().includes(searchDept.toLowerCase()))
+              .map(d => (
+                <option key={d._id} value={d._id}>
+                  {d.name}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <button onClick={addCourse}>+ Add Course</button>
 
       </div>
+
+      {/* 🔥 SEARCH COURSE */}
+      <input
+        className="course-search"
+        placeholder="🔍 Search course..."
+        value={searchCourse}
+        onChange={(e) => setSearchCourse(e.target.value)}
+      />
 
       {/* LIST */}
-      <div className="grid">
+      <div className="course-grid">
 
-        {courses.map(course => (
+        {courses
+          .filter(c => c.name.toLowerCase().includes(searchCourse.toLowerCase()))
+          .map(course => (
 
-          <div key={course._id} className="card">
+            <div key={course._id} className="course-card">
 
-            <h3>{course.name}</h3>
+              <h3>{course.name}</h3>
 
-            <p>🏫 {course.department?.name}</p>
+              <p className="dept">
+                🏫 {course.department?.name}
+              </p>
 
-            <button
-              className="btn-danger"
-              onClick={() => deleteCourse(course._id)}
-            >
-              Delete
-            </button>
+              <button
+                className="delete-btn"
+                onClick={() => deleteCourse(course._id)}
+              >
+                Delete
+              </button>
 
-          </div>
+            </div>
 
-        ))}
+          ))}
 
       </div>
 
-    </div>
+      {/* 🔥 CSS */}
+      <style>{`
 
+      .course-container {
+        padding: 30px;
+        border-radius: 16px;
+        background: linear-gradient(135deg,#eef2ff,#f8fafc);
+      }
+
+      /* HEADER */
+      .course-header h2 {
+        font-size: 28px;
+        font-weight: 700;
+        background: linear-gradient(90deg,#4f46e5,#06b6d4);
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .course-header p {
+        color: #64748b;
+      }
+
+      /* MESSAGE */
+      .course-msg {
+        padding: 12px;
+        border-radius: 10px;
+        margin: 15px 0;
+        color: white;
+      }
+
+      .course-msg.success { background:#16a34a; }
+      .course-msg.error { background:#dc2626; }
+
+      /* FORM */
+      .course-form {
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+      }
+
+      .course-form input,
+      .course-form select {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 10px;
+        border: 1px solid #cbd5f5;
+      }
+
+      .course-form button {
+        background: linear-gradient(135deg,#6366f1,#4f46e5);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 10px;
+        border: none;
+        margin-top: 10px;
+      }
+
+      /* DROPDOWN */
+      .course-dropdown {
+        margin-top: 10px;
+      }
+
+      /* SEARCH */
+      .course-search {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #cbd5f5;
+        margin-bottom: 20px;
+      }
+
+      /* GRID */
+      .course-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
+        gap: 20px;
+      }
+
+      /* CARD */
+      .course-card {
+        padding: 20px;
+        border-radius: 16px;
+        background: linear-gradient(145deg,#ffffff,#eef2ff);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        transition: 0.4s;
+      }
+
+      .course-card:hover {
+        transform: translateY(-8px) scale(1.03);
+      }
+
+      .course-card h3 {
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+
+      .dept {
+        color: #475569;
+        margin-bottom: 10px;
+      }
+
+      /* DELETE */
+      .delete-btn {
+        background: linear-gradient(135deg,#ef4444,#dc2626);
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+      }
+
+      `}</style>
+
+    </div>
   );
 }
 
