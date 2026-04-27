@@ -93,11 +93,9 @@ function TeacherDashboard() {
       {showProfile && (
         <div style={styles.sidebar}>
 
-          {/* ✅ PERFECT PROFILE */}
           <div style={styles.profileWrapper}>
 
             <label className="photoBox">
-
               <img
                 src={
                   profileImg ||
@@ -106,11 +104,8 @@ function TeacherDashboard() {
                 className="profileImg"
                 alt="profile"
               />
-
               <div className="cameraIcon">📷</div>
-
               <input type="file" hidden onChange={handleImage} />
-
             </label>
 
             <h3 style={{ marginTop: "12px" }}>{loggedInTeacher}</h3>
@@ -195,11 +190,17 @@ function TeacherDashboard() {
                         {match ? (
                           <>
                             <b>{match.subject?.name}</b><br/>
+
                             👨‍🏫 {match.teacher?.map(t => t.name).join(", ")}<br/>
-                            🏫 {match.room?.name} ({match.room?.building})<br/>
-                            🎓 {match.sections?.map(s => s.name).join(", ")}
+
+                            🏫 {match.room?.name} | {match.room?.building} | Floor {match.room?.floor || "N/A"}<br/>
+
+                            {/* ✅ FIXED COURSE (NO ID) */}
+                            🎓 {match.sections?.map(s =>
+                              `${typeof s.course === "object" ? s.course.name : ""} - ${s.name}`
+                            ).join(", ")}
                           </>
-                        ) : "-"}
+                        ) : "FREE"}
                       </td>
                     );
                   })}
@@ -212,7 +213,7 @@ function TeacherDashboard() {
 
       </div>
 
-      {/* 🔥 HOVER FIX */}
+      {/* CSS SAME */}
       <style>{`
         .photoBox {
           width: 85px;
@@ -272,9 +273,27 @@ const styles = {
   logoutBtn:{ marginTop:"10px", width:"100%", padding:"10px", background:"#ef4444", border:"none", color:"#fff", borderRadius:"8px", cursor:"pointer" },
   main:{ flex:1, padding:"30px" },
   card:{ background:"#fff", padding:"20px", borderRadius:"15px", marginBottom:"20px" },
-  searchBox:{ position:"relative" },
-  input:{ width:"100%", padding:"10px" },
-  icon:{ position:"absolute", right:"10px", top:"10px" },
+
+  /* ✅ FIXED SEARCH */
+  searchBox:{
+    position:"relative",
+    display:"flex",
+    alignItems:"center"
+  },
+
+  input:{
+    width:"100%",
+    padding:"10px 40px 10px 10px"
+  },
+
+  icon:{
+    position:"absolute",
+    right:"12px",
+    top:"50%",
+    transform:"translateY(-50%)",
+    color:"#666"
+  },
+
   select:{ width:"100%", marginTop:"10px", padding:"10px" },
   header:{ display:"flex", justifyContent:"space-between" },
   table:{ width:"100%", marginTop:"15px", borderCollapse:"collapse" },

@@ -10,12 +10,17 @@ function StudentDashboard() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
 
+  // ✅ NEW SEARCH STATES
+  const [deptSearch, setDeptSearch] = useState("");
+  const [courseSearch, setCourseSearch] = useState("");
+  const [sectionSearch, setSectionSearch] = useState("");
+
   const [timetable, setTimetable] = useState([]);
   const [message, setMessage] = useState("");
 
   const studentName = localStorage.getItem("studentName");
 
-  // ✅ AUTO HIDE MESSAGE (3 sec)
+  // AUTO HIDE MESSAGE
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => {
@@ -31,12 +36,19 @@ function StudentDashboard() {
     fetch("http://localhost:5000/api/sections").then(res => res.json()).then(setSections);
   }, []);
 
+  // ✅ FILTER WITH SEARCH
+  const filteredDepartments = departments.filter(d =>
+    d.name.toLowerCase().includes(deptSearch.toLowerCase())
+  );
+
   const filteredCourses = courses.filter(c =>
-    !selectedDept || c.department?.name === selectedDept
+    (!selectedDept || c.department?.name === selectedDept) &&
+    c.name.toLowerCase().includes(courseSearch.toLowerCase())
   );
 
   const filteredSections = sections.filter(s =>
-    !selectedCourse || s.course?.name === selectedCourse
+    (!selectedCourse || s.course?.name === selectedCourse) &&
+    s.name.toLowerCase().includes(sectionSearch.toLowerCase())
   );
 
   const fetchTimetable = async () => {
@@ -100,7 +112,6 @@ function StudentDashboard() {
           <p>Welcome, {studentName || "Student"} 👋</p>
         </div>
 
-        {/* ✅ NEW BUTTONS */}
         <div style={{ display:"flex", gap:"10px" }}>
           <button style={homeBtn} onClick={goHome}>🏠 Home</button>
           <button style={logoutBtn} onClick={logout}>🚪 Logout</button>
@@ -116,20 +127,49 @@ function StudentDashboard() {
         <h3>🎯 Select Filters</h3>
 
         <div style={grid3}>
-          <select value={selectedDept} onChange={(e)=>setSelectedDept(e.target.value)} style={input}>
-            <option value="">Department</option>
-            {departments.map(d=> <option key={d._id}>{d.name}</option>)}
-          </select>
 
-          <select value={selectedCourse} onChange={(e)=>setSelectedCourse(e.target.value)} style={input}>
-            <option value="">Course</option>
-            {filteredCourses.map(c=> <option key={c._id}>{c.name}</option>)}
-          </select>
+          {/* DEPARTMENT */}
+          <div>
+            <input
+              placeholder="Search Department..."
+              value={deptSearch}
+              onChange={(e)=>setDeptSearch(e.target.value)}
+              style={input}
+            />
+            <select value={selectedDept} onChange={(e)=>setSelectedDept(e.target.value)} style={input}>
+              <option value="">Department</option>
+              {filteredDepartments.map(d=> <option key={d._id}>{d.name}</option>)}
+            </select>
+          </div>
 
-          <select value={selectedSection} onChange={(e)=>setSelectedSection(e.target.value)} style={input}>
-            <option value="">Section</option>
-            {filteredSections.map(s=> <option key={s._id}>{s.name}</option>)}
-          </select>
+          {/* COURSE */}
+          <div>
+            <input
+              placeholder="Search Course..."
+              value={courseSearch}
+              onChange={(e)=>setCourseSearch(e.target.value)}
+              style={input}
+            />
+            <select value={selectedCourse} onChange={(e)=>setSelectedCourse(e.target.value)} style={input}>
+              <option value="">Course</option>
+              {filteredCourses.map(c=> <option key={c._id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {/* SECTION */}
+          <div>
+            <input
+              placeholder="Search Section..."
+              value={sectionSearch}
+              onChange={(e)=>setSectionSearch(e.target.value)}
+              style={input}
+            />
+            <select value={selectedSection} onChange={(e)=>setSelectedSection(e.target.value)} style={input}>
+              <option value="">Section</option>
+              {filteredSections.map(s=> <option key={s._id}>{s.name}</option>)}
+            </select>
+          </div>
+
         </div>
 
         <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
@@ -169,7 +209,10 @@ function StudentDashboard() {
                           <>
                             <b>{item.subject?.name}</b><br/>
                             👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}<br/>
-                            🏫 {item.room?.name}<br/>
+
+                            {/* ✅ UPDATED LOCATION */}
+                            🏫 {item.room?.building || "Building"} - Floor {item.room?.floor || "N/A"} - {item.room?.name}<br/>
+
                             📚 {item.sections?.map(s => s.name).join(", ")}
                           </>
                         ) : "FREE"}
@@ -188,7 +231,7 @@ function StudentDashboard() {
   );
 }
 
-/* STYLES */
+/* SAME CSS (UNCHANGED) */
 
 const container = { padding:"30px", background:"#f1f5f9" };
 

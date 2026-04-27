@@ -172,11 +172,16 @@ function TimetableGrid() {
                           👨‍🏫 {item.teacher?.map(t => t.name).join(", ")}
                         </div>
 
+                        {/* ✅ UPDATED ROOM DETAILS */}
                         <div className="small">
                           🏫 {
                             Array.isArray(item.room)
-                              ? item.room.map(r => r.name).join(", ")
-                              : item.room?.name
+                              ? item.room.map(r =>
+                                  `${r.building || "Building"} - Floor ${r.floor || "N/A"} - ${r.name}`
+                                ).join(", ")
+                              : item.room
+                                ? `${item.room.building || "Building"} - Floor ${item.room.floor || "N/A"} - ${item.room.name}`
+                                : "N/A"
                           }
                         </div>
 
@@ -193,7 +198,7 @@ function TimetableGrid() {
 
       </div>
 
-      {/* 🔥 CSS */}
+      {/* 🔥 CSS (UNCHANGED + SAME DESIGN) */}
       <style>{`
 
       .tt-container {

@@ -13,14 +13,17 @@ function Layout({ children }) {
 
   const fileInputRef = useRef();
 
+  // ✅ FIXED LOGOUT
   const handleLogout = () => {
     localStorage.removeItem("name");
     localStorage.removeItem("email");
-    navigate("/");
+    localStorage.removeItem("profilePhoto");
+
+    navigate("/login/admin"); // 🔥 FIX HERE
   };
 
   const goHome = () => {
-    navigate("/");
+    navigate("/"); // same as before (landing page)
   };
 
   // 🔥 PHOTO UPLOAD
@@ -31,7 +34,7 @@ function Layout({ children }) {
     const reader = new FileReader();
     reader.onloadend = () => {
       localStorage.setItem("profilePhoto", reader.result);
-      window.location.reload(); // refresh to show image
+      window.location.reload();
     };
     reader.readAsDataURL(file);
   };
@@ -149,7 +152,6 @@ function Layout({ children }) {
         margin-bottom: 20px;
       }
 
-      /* 🔥 PHOTO BOX */
       .photoBox {
         position: relative;
         width: 80px;
@@ -167,13 +169,11 @@ function Layout({ children }) {
         transition: 0.3s;
       }
 
-      /* 🔥 HOVER EFFECT */
       .photoBox:hover img {
         transform: scale(1.05);
         box-shadow: 0 0 10px #6366f1;
       }
 
-      /* 🔥 CAMERA ICON */
       .uploadIcon {
         position: absolute;
         bottom: -5px;
