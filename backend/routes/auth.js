@@ -5,7 +5,7 @@ const nodemailer = require("nodemailer");
 
 let otpStore = {};
 
-// 🔥 ALLOWED ADMINS (IMPORTANT)
+// 🔥 ALLOWED ADMINS
 const ALLOWED_ADMINS = [
   "abhikumar845422@gmail.com",
   "nimcet202425@gmail.com",
@@ -14,77 +14,102 @@ const ALLOWED_ADMINS = [
 
 // 🔥 MAIL CONFIG
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
 
-
-// 🔥 SEND OTP
+// 🔥 SEND OTP (FINAL BALANCED FIX)
 router.post("/send-otp", async (req, res) => {
   try {
-    const { email, mode } = req.body;
+    let { email, mode } = req.body;
 
     if (!email) {
       return res.json({ message: "Email required" });
     }
 
-    // 🔐 CHECK: only allowed admin emails
-    if (!ALLOWED_ADMINS.includes(email)) {
-      return res.json({ message: "❌ This email is not registered as admin. Contact system admin." });
-    }
+    email = email.toLowerCase();
 
-    if (mode === "forgot") {
-      const user = await Admin.findOne({ email });
-      if (!user) {
-        return res.json({ message: "Admin not found" });
+    // 🔐 ADMIN CHECK
+    if (mode === "register" || mode === "login") {
+      if (!ALLOWED_ADMINS.includes(email)) {
+        return res.json({ message: "❌ Not authorized as admin" });
       }
     }
 
+    // 🔐 FORGOT CHECK
+    if (mode === "forgot") {
+      if (!ALLOWED_ADMINS.includes(email)) {
+        return res.json({ message: "❌ Not authorized as admin" });
+      }
+
+      const user = await Admin.findOne({ email });
+      if (!user) {
+        return res.json({ message: "❌ Admin not found" });
+      }
+    }
+
+    // 🔥 GENERATE OTP
     const otp = Math.floor(1000 + Math.random() * 9000);
-    otpStore[email] = otp;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Admin OTP",
-      text: `Your OTP is ${otp}`
-    });
+    otpStore[email] = {
+      otp,
+      expires: Date.now() + 5 * 60 * 1000
+    };
 
+    console.log("📩 OTP:", otp);
+
+    // ✅ UI FAST RESPONSE
     res.json({ message: "OTP sent successfully" });
 
+    // ✅ SAFE ASYNC EMAIL (NO HANG)
+    setImmediate(async () => {
+      try {
+        const info = await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "OTP Verification",
+          text: `Your OTP is ${otp}. It is valid for 5 minutes.`
+        });
+
+        console.log("✅ Email sent:", info.response);
+      } catch (err) {
+        console.log("❌ Email error:", err);
+      }
+    });
+
   } catch (err) {
+    console.log("❌ ERROR:", err);
     res.json({ message: "OTP failed" });
   }
 });
 
 
-// 🔥 REGISTER (SECURE)
+// 🔥 REGISTER
 router.post("/register", async (req, res) => {
   try {
-    const {
-      name,
-      phone,
-      email,
-      password,
-      address,
-      college,
-      otp
-    } = req.body;
+    let { name, phone, email, password, address, college, otp } = req.body;
+
+    email = email.toLowerCase();
 
     if (!name || !phone || !email || !password || !address || !college || !otp) {
       return res.json({ message: "Fill all fields" });
     }
 
-    // 🔐 ONLY ALLOWED ADMIN
     if (!ALLOWED_ADMINS.includes(email)) {
-      return res.json({ message: "❌ This email is not registered as admin. Contact admin" });
+      return res.json({ message: "❌ Not authorized as admin" });
     }
 
-    if (otpStore[email] != otp) {
+    if (!otpStore[email] || otpStore[email].otp != otp) {
       return res.json({ message: "Invalid OTP" });
+    }
+
+    if (Date.now() > otpStore[email].expires) {
+      return res.json({ message: "OTP expired" });
     }
 
     const exists = await Admin.findOne({ email });
@@ -92,14 +117,7 @@ router.post("/register", async (req, res) => {
       return res.json({ message: "Admin already exists" });
     }
 
-    await Admin.create({
-      name,
-      phone,
-      email,
-      password,
-      address,
-      college
-    });
+    await Admin.create({ name, phone, email, password, address, college });
 
     delete otpStore[email];
 
@@ -114,11 +132,12 @@ router.post("/register", async (req, res) => {
 // 🔥 LOGIN
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
-    // 🔐 BLOCK UNAUTHORIZED EMAIL
+    email = email.toLowerCase();
+
     if (!ALLOWED_ADMINS.includes(email)) {
-      return res.json({ message: "❌ Not authorized admin" });
+      return res.json({ message: "❌ Not authorized as admin" });
     }
 
     const user = await Admin.findOne({ email });
@@ -142,14 +161,20 @@ router.post("/login", async (req, res) => {
 // 🔥 RESET PASSWORD
 router.post("/reset", async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    let { email, otp, newPassword } = req.body;
+
+    email = email.toLowerCase();
 
     if (!ALLOWED_ADMINS.includes(email)) {
-      return res.json({ message: "❌ Not authorized" });
+      return res.json({ message: "❌ Not authorized as admin" });
     }
 
-    if (otpStore[email] != otp) {
+    if (!otpStore[email] || otpStore[email].otp != otp) {
       return res.json({ message: "Invalid OTP" });
+    }
+
+    if (Date.now() > otpStore[email].expires) {
+      return res.json({ message: "OTP expired" });
     }
 
     const user = await Admin.findOne({ email });

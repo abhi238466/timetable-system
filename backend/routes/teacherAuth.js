@@ -28,7 +28,7 @@ router.post("/send-otp", async (req, res) => {
       const user = await Teacher.findOne({ email });
       if (!user) {
         console.log("❌ Teacher not found");
-        return res.json({ message: "Teacher not found" });
+        return res.json({ message: "❌ Account not created with this email" });
       }
     }
 

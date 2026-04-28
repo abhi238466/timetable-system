@@ -107,34 +107,42 @@ function Login() {
   // 🔥 SEND OTP
   const sendOtp = async () => {
 
-    if (!data.email) return showMessage("Enter email", "error");
+  if (!data.email) return showMessage("Enter email", "error");
 
-    let url = "";
+  let url = "";
 
-    if (role === "admin") {
-      url = "http://localhost:5000/api/auth/send-otp";
-    } else if (role === "student") {
-      url = "http://localhost:5000/api/student/send-otp";
-    } else {
-      url = "http://localhost:5000/api/teacher-auth/send-otp";
-    }
+  if (role === "admin") {
+    url = "http://localhost:5000/api/auth/send-otp";
+  } else if (role === "student") {
+    url = "http://localhost:5000/api/student/send-otp";
+  } else {
+    url = "http://localhost:5000/api/teacher-auth/send-otp";
+  }
 
-    try {
-      setLoadingOtp(true);
+  try {
+    setLoadingOtp(true);
 
-      showMessage("Sending OTP... ⏳", "info");
+    showMessage("Sending OTP... ⏳", "info");
 
-      await axios.post(url, { email: data.email, mode: "forgot" });
+    const res = await axios.post(url, {
+      email: data.email,
+      mode: "forgot"
+    });
 
-      showMessage("OTP Sent 📩");
+    // ✅ IMPORTANT CHECK
+   if (res.data.message.toLowerCase().includes("otp sent")) {
+      showMessage("OTP Sent 📩", "success");
       setStep("otp");
-
-    } catch {
-      showMessage("OTP failed ❌", "error");
-    } finally {
-      setLoadingOtp(false);
+    } else {
+      showMessage(res.data.message, "error");
     }
-  };
+
+  } catch (err) {
+    showMessage("OTP failed ❌", "error");
+  } finally {
+    setLoadingOtp(false);
+  }
+};
 
   const verifyOtp = () => {
     if (!otp) return showMessage("Enter OTP", "error");
@@ -143,26 +151,34 @@ function Login() {
 
   const resetPassword = async () => {
 
-    let url = "";
+  let url = "";
 
-    if (role === "admin") {
-      url = "http://localhost:5000/api/auth/reset";
-    } else if (role === "student") {
-      url = "http://localhost:5000/api/student/reset";
-    } else {
-      url = "http://localhost:5000/api/teacher-auth/reset";
-    }
+  if (role === "admin") {
+    url = "http://localhost:5000/api/auth/reset";
+  } else if (role === "student") {
+    url = "http://localhost:5000/api/student/reset";
+  } else {
+    url = "http://localhost:5000/api/teacher-auth/reset";
+  }
 
+  try {
     const res = await axios.post(url, {
       email: data.email,
       otp,
       newPassword: newPass
     });
 
-    showMessage(res.data.message);
-    setStep("login");
-  };
+    if (res.data.message.toLowerCase().includes("success")) {
+      showMessage(res.data.message, "success");
+      setStep("login");
+    } else {
+      showMessage(res.data.message, "error");
+    }
 
+  } catch (err) {
+    showMessage("Reset failed ❌", "error");
+  }
+};
   if (showRegister) {
     return <Register role={role} goBack={() => setShowRegister(false)} />;
   }

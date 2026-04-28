@@ -22,7 +22,7 @@ router.post("/send-otp", async (req, res) => {
 
     if (mode === "forgot") {
       const user = await Student.findOne({ email });
-      if (!user) return res.json({ message: "Student not found" });
+      if (!user) return res.json({ message: "❌ Account not created with this email" });
     }
 
     const otp = Math.floor(1000 + Math.random() * 9000);
