@@ -106,7 +106,7 @@ function SubjectForm() {
     <div className="container subject-container">
 
       <div className="subject-header">
-        <h2>📘 Subject Management</h2>
+        <h2> Subject Management</h2>
         <p>Create & manage subjects smartly</p>
       </div>
 

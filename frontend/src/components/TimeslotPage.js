@@ -31,7 +31,7 @@ function TimeslotPage() {
     }
   }, [msg]);
 
-  // 🔥 TIME FORMAT (AM/PM) ✅ FIXED ONLY THIS
+  // 🔥 TIME FORMAT (AM/PM)
   const formatTime = (time) => {
     if (!time) return "";
 
@@ -101,7 +101,10 @@ function TimeslotPage() {
     fetchSlots();
   };
 
-  const filteredSlots = slots.filter(slot => slot.day === day);
+  // ✅ FIX — sort by startTime so order sahi rahe
+  const filteredSlots = slots
+    .filter(slot => slot.day === day)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   return (
 
@@ -109,7 +112,7 @@ function TimeslotPage() {
 
       {/* HEADER */}
       <div className="timeslot-header">
-        <h2>⏰ Timeslot Management</h2>
+        <h2> Timeslot Management</h2>
         <p>Create and manage time slots efficiently</p>
       </div>
 

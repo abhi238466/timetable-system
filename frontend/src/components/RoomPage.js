@@ -100,7 +100,7 @@ function RoomPage() {
 
       {/* HEADER */}
       <div className="room-header">
-        <h2>🏫 Room Management</h2>
+        <h2> Room Management</h2>
         <p>Manage rooms smartly with validation</p>
       </div>
 
