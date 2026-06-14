@@ -38,7 +38,7 @@ function LandingPage() {
       <nav className="pro-navbar">
         <div className="pro-logo">
           <span>🎓</span>
-          Automated Timetable <b>System</b>
+          Timetable Management <b>System</b>
         </div>
 
         <div className="pro-menu">
@@ -99,7 +99,7 @@ function LandingPage() {
         <div className="dashboard-preview">
           <div className="preview-shell">
             <aside className="preview-sidebar">
-              <div className="preview-brand">🎓 Automated Timetable System</div>
+              <div className="preview-brand">🎓 Timetable Management System</div>
               <p className="side-active">Dashboard</p>
               <p>Departments</p>
               <p>Teachers</p>

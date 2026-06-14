@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const TimeSlot = require("../models/TimeSlot");
+const Timetable = require("../models/Timetable"); //avi add kye hai
 
 // Add timeslot
 router.post("/", async (req, res) => {
@@ -24,18 +25,45 @@ router.get("/", async (req, res) => {
 });
 
 // 🔥 DELETE TIMESLOT (NEW)
+// router.delete("/:id", async (req, res) => {
+//   try {
+//     const deleted = await TimeSlot.findByIdAndDelete(req.params.id);
+
+//     if (!deleted) {
+//       return res.status(404).json({ message: "Timeslot not found" });
+//     }
+
+//     res.json({ message: "Timeslot deleted successfully" });
+
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 router.delete("/:id", async (req, res) => {
   try {
+
     const deleted = await TimeSlot.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ message: "Timeslot not found" });
+      return res.status(404).json({
+        message: "Timeslot not found"
+      });
     }
 
-    res.json({ message: "Timeslot deleted successfully" });
+    // ✅ IMPORTANT FIX
+    await Timetable.deleteMany({
+      timeslot: req.params.id
+    });
+
+    res.json({
+      message: "Timeslot deleted successfully"
+    });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    res.status(500).json({
+      error: error.message
+    });
   }
 });
 

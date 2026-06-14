@@ -9,6 +9,7 @@ let otpStore = {};
 const ALLOWED_ADMINS = [
   "abhikumar845422@gmail.com",
   "nimcet202425@gmail.com",
+  "at841105@gmail.com",
   "brajeshkumar953426@gmail.com",
   "krishnakumar13we@gmail.com"
 ];

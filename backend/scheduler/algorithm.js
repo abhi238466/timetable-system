@@ -19,6 +19,7 @@ async function generateTimetable() {
     Thursday: 4, Friday: 5, Saturday: 6
   };
 
+  // ✅ Timeslots sorted by day → startTime (9AM pehle)
   const timeslots = timeslotsRaw.sort((a, b) => {
     if (dayOrder[a.day] !== dayOrder[b.day]) {
       return dayOrder[a.day] - dayOrder[b.day];
@@ -27,50 +28,107 @@ async function generateTimetable() {
   });
 
   let timetable = [];
-  let teacherBusy = {};
-  let roomBusy = {};
-  let sectionBusy = {};
-  let subjectDayMap = {};
-  let sectionGapUsed = {};
+
+  // ── Busy Maps ─────────────────────────────────────────
+  let teacherBusy = {};   // teacherId_slotId → bool
+  let roomBusy    = {};   // roomId_slotId    → bool
+  let sectionBusy = {};   // sectionId_slotId → bool
+
+  // ── Per-day tracking ──────────────────────────────────
+  //
+  // sectionGapUsed[sectionId][day] = true
+  //   → Yeh section is din gap le chuka (individual ya combined)
+  //   → Ek baar gap liya → us din dobara nahi milega
+  //   → Combined mein liya → individual ko nahi milega aur vice versa
+  //
+  // subjectSectionTypeDay[subjectId_sectionId_type] = Set<day>
+  //   → CSE-A DBMS theory → "dbmsId_cseAId_classroom"
+  //   → CSE-A DBMS lab    → "dbmsId_cseAId_lab"      (alag key → allowed)
+  //   → CSE-B DBMS theory → "dbmsId_cseBId_classroom" (alag key → allowed)
+  //   → CSE-A DBMS theory dobara → same key → BLOCKED
+  //   → CSE-A DBMS lab dobara    → same key → BLOCKED
+  //
+  let sectionGapUsed        = {};  // sectionId → { day → bool }
+  let subjectSectionTypeDay = {};  // key → Set<day>
 
   const TIME_LIMIT = 15000;
-  const startTime = Date.now();
-  let timedOut = false;
+  const genStart   = Date.now();
+  let   timedOut   = false;
 
+  // =============================================
   // INIT
-  for (let subject of subjects) {
-    for (let teacher of subject.teachers) {
-      for (let slot of timeslots) {
+  // =============================================
+  for (const slot of timeslots) {
+    for (const room of rooms) {
+      roomBusy[room.id + "_" + slot._id] = false;
+    }
+  }
+
+  for (const subject of subjects) {
+    for (const teacher of subject.teachers) {
+      for (const slot of timeslots) {
         teacherBusy[teacher.id + "_" + slot._id] = false;
       }
     }
-    for (let section of subject.sections) {
-      for (let slot of timeslots) {
+    for (const section of subject.sections) {
+      for (const slot of timeslots) {
         sectionBusy[section.id + "_" + slot._id] = false;
       }
       sectionGapUsed[section.id] = {};
     }
   }
 
+  // =============================================
   // QUEUE
+  // =============================================
   let queue = [];
-  for (let subject of subjects) {
+  for (const subject of subjects) {
     for (let i = 0; i < subject.weeklyFrequency; i++) {
       queue.push(subject);
     }
   }
   queue.sort((a, b) => b.weeklyFrequency - a.weeklyFrequency);
 
-  // ✅ subjectDayMap — queue banane ke baad init karo
-  // Key = subjectId + type + sectionIds (sorted)
-  // Taaki CSE-A ka DS aur CSE-B ka DS alag track hon
-  for (let session of queue) {
+  // subjectSectionTypeDay init
+  for (const session of queue) {
     const typeKey = session.type === "lab" ? "lab" : "classroom";
-    const sectionKey = session.sections.map(s => s._id).sort().join("_");
-    const dayKey = session._id + "_" + typeKey + "_" + sectionKey;
-    if (!subjectDayMap[dayKey]) {
-      subjectDayMap[dayKey] = new Set();
+    for (const section of session.sections) {
+      const key = session._id + "_" + section._id + "_" + typeKey;
+      if (!subjectSectionTypeDay[key]) {
+        subjectSectionTypeDay[key] = new Set();
+      }
     }
+  }
+
+  // =============================================
+  // HELPERS
+  // =============================================
+
+  // Ek section ko ek din mein same subject+type dobara nahi
+  // BUT theory + lab = alag type = allowed
+  // CSE-A ka block CSE-B ko affect nahi karta
+  function isSubjectTypeDayBlocked(session, day) {
+    const typeKey = session.type === "lab" ? "lab" : "classroom";
+    return session.sections.some(sec => {
+      const key = session._id + "_" + sec._id + "_" + typeKey;
+      return subjectSectionTypeDay[key] && subjectSectionTypeDay[key].has(day);
+    });
+  }
+
+  function markSubjectTypeDay(session, day) {
+    const typeKey = session.type === "lab" ? "lab" : "classroom";
+    session.sections.forEach(sec => {
+      const key = session._id + "_" + sec._id + "_" + typeKey;
+      if (subjectSectionTypeDay[key]) subjectSectionTypeDay[key].add(day);
+    });
+  }
+
+  function unmarkSubjectTypeDay(session, day) {
+    const typeKey = session.type === "lab" ? "lab" : "classroom";
+    session.sections.forEach(sec => {
+      const key = session._id + "_" + sec._id + "_" + typeKey;
+      if (subjectSectionTypeDay[key]) subjectSectionTypeDay[key].delete(day);
+    });
   }
 
   // =============================================
@@ -78,218 +136,276 @@ async function generateTimetable() {
   // =============================================
   function backtrack(queueIndex) {
 
-    if (Date.now() - startTime > TIME_LIMIT) {
+    if (Date.now() - genStart > TIME_LIMIT) {
       timedOut = true;
       return false;
     }
 
     if (queueIndex === queue.length) return true;
 
-    let session = queue[queueIndex];
-
-    // ✅ Section-specific dayKey
+    const session = queue[queueIndex];
     const typeKey = session.type === "lab" ? "lab" : "classroom";
-    const sectionKey = session.sections.map(s => s._id).sort().join("_");
-    const dayKey = session._id + "_" + typeKey + "_" + sectionKey;
+    const totalStudents = session.sections.reduce((sum, sec) => sum + sec.strength, 0);
 
-    let totalStudents = session.sections.reduce((sum, sec) => sum + sec.strength, 0);
+    const validRooms = rooms
+      .filter(r => r.type === typeKey && r.capacity >= totalStudents)
+      .sort((a, b) => {
+        if (a.building === b.building && a.floor === b.floor) return a.capacity - b.capacity;
+        if (a.building === b.building) return -1;
+        return a.building.localeCompare(b.building);
+      });
 
     for (let i = 0; i < timeslots.length; i++) {
 
-      if (Date.now() - startTime > TIME_LIMIT) {
+      if (Date.now() - genStart > TIME_LIMIT) {
         timedOut = true;
         return false;
       }
 
-      let slot = timeslots[i];
+      const baseSlot = timeslots[i];
 
-      // ✅ Sirf is section combo ke liye us din block
-      if (subjectDayMap[dayKey].has(slot.day)) continue;
+      // Same subject+type is din kisi section ke liye already scheduled? Skip.
+      if (isSubjectTypeDayBlocked(session, baseSlot.day)) continue;
 
+      // ── Gap loop ──────────────────────────────────────
+      // gap=0 → baseSlot khud
+      // gap=1 → ek slot aage (same day)
+      // gap=2 → do slot aage (same day)
+      //
+      // Preference: pehle gap=0 try karo (no gap, earliest)
+      // Agar base slot genuinely blocked → tab gap=1, gap=2
+      // Gap sirf same day ke andar
+      //
+      // Gap rule (SIMPLE — original jaisa):
+      //   Ek section ko ek din mein sirf EK baar gap milega
+      //   Chahe individual ho ya combined — ek baar liya toh band
+      // ─────────────────────────────────────────────────
       for (let gap = 0; gap <= 2; gap++) {
 
-        let index = i + gap;
-        if (index >= timeslots.length) continue;
+        const index = i + gap;
+        if (index >= timeslots.length) break;
 
-        let trySlot = timeslots[index];
+        const trySlot = timeslots[index];
 
-        // Gap same day mein hi
-        if (trySlot.day !== slot.day) continue;
+        // Same day check
+        if (trySlot.day !== baseSlot.day) break;
 
-        // ✅ GAP RULE
-        // Ek section ko ek din mein max ek baar gap milega
-        // Shared section dono ke liye ek saath mark hoga
-        // Agar kisi ek ko gap mil chuka → dobara nahi milega
-        let gapAllowed = session.sections.every(sec => {
-          if (gap === 0) return true;
-          return !sectionGapUsed[sec.id][trySlot.day];
-        });
-
-        if (!gapAllowed) continue;
-
-        // ✅ Gap sirf tab do jab base slot pe kuch issue tha
         if (gap > 0) {
-          let baseSlot = timeslots[i];
 
-          let baseTeacherFree = session.teachers.every(t =>
+          // Base slot pe genuinely koi block tha?
+          const baseTeacherFree = session.teachers.every(t =>
             !teacherBusy[t.id + "_" + baseSlot._id]
           );
-          let baseRoomAvailable = rooms.some(r =>
-            r.type === typeKey &&
-            r.capacity >= totalStudents &&
+          const baseRoomFree = validRooms.some(r =>
             !roomBusy[r.id + "_" + baseSlot._id]
           );
-          let baseSectionFree = session.sections.every(sec =>
+          const baseSectionFree = session.sections.every(sec =>
             !sectionBusy[sec.id + "_" + baseSlot._id]
           );
 
-          // Agar base pe sab free tha → gap ki zarurat nahi thi
-          if (baseTeacherFree && baseRoomAvailable && baseSectionFree) continue;
+          // Sab free tha → gap ki zarurat nahi thi
+          if (baseTeacherFree && baseRoomFree && baseSectionFree) continue;
+
+          // Kisi bhi section ne is din gap le rakha? → nahi milega
+          // (individual + combined dono same flag share karte hain)
+          const anyGapUsed = session.sections.some(sec =>
+            sectionGapUsed[sec.id] && sectionGapUsed[sec.id][trySlot.day]
+          );
+          if (anyGapUsed) continue;
         }
 
-        // ROOM FILTER
-        let validRooms = rooms.filter(r => r.type === typeKey);
+        // Teacher aur section free?
+        const teacherFree = session.teachers.every(t =>
+          !teacherBusy[t.id + "_" + trySlot._id]
+        );
+        const sectionFree = session.sections.every(sec =>
+          !sectionBusy[sec.id + "_" + trySlot._id]
+        );
 
-        validRooms.sort((a, b) => {
-          if (a.building === b.building && a.floor === b.floor) return a.capacity - b.capacity;
-          if (a.building === b.building) return -1;
-          return a.building.localeCompare(b.building);
-        });
+        if (!teacherFree || !sectionFree) continue;
 
+        // Room select
         let selectedRoom = null;
-        for (let room of validRooms) {
-          let key = room.id + "_" + trySlot._id;
-          if (!roomBusy[key] && room.capacity >= totalStudents) {
+        for (const room of validRooms) {
+          if (!roomBusy[room.id + "_" + trySlot._id]) {
             selectedRoom = room;
             break;
           }
         }
-
         if (!selectedRoom) continue;
 
-        let teacherFree = session.teachers.every(t =>
-          !teacherBusy[t.id + "_" + trySlot._id]
-        );
-        let sectionFree = session.sections.every(sec =>
-          !sectionBusy[sec.id + "_" + trySlot._id]
-        );
+        // =============================================
+        // ✅ ASSIGN
+        // =============================================
+        timetable.push({
+          subject:  session._id,
+          teacher:  session.teachers.map(t => t._id),
+          room:     selectedRoom._id,
+          timeslot: trySlot._id,
+          sections: session.sections.map(s => s._id)
+        });
 
-        if (teacherFree && sectionFree) {
+        roomBusy[selectedRoom.id + "_" + trySlot._id] = true;
 
-          // ✅ ASSIGN
-          timetable.push({
-            subject: session._id,
-            teacher: session.teachers.map(t => t._id),
-            room: selectedRoom._id,
-            timeslot: trySlot._id,
-            sections: session.sections.map(s => s._id)
-          });
+        session.teachers.forEach(t => {
+          teacherBusy[t.id + "_" + trySlot._id] = true;
+        });
 
-          roomBusy[selectedRoom.id + "_" + trySlot._id] = true;
-          session.teachers.forEach(t => {
-            teacherBusy[t.id + "_" + trySlot._id] = true;
-          });
+        // Gap flag — sab sections ke liye ek saath mark karo
+        // Taaki combine+alone dono covered hon
+        const gapSetFor = [];
+        session.sections.forEach(sec => {
+          sectionBusy[sec.id + "_" + trySlot._id] = true;
+          if (gap > 0 && !sectionGapUsed[sec.id][trySlot.day]) {
+            sectionGapUsed[sec.id][trySlot.day] = true;
+            gapSetFor.push(sec.id);
+          }
+        });
 
-          let gapSetFor = [];
-          session.sections.forEach(sec => {
-            sectionBusy[sec.id + "_" + trySlot._id] = true;
-            if (gap > 0 && !sectionGapUsed[sec.id][trySlot.day]) {
-              sectionGapUsed[sec.id][trySlot.day] = true;
-              gapSetFor.push(sec.id);
-            }
-          });
+        markSubjectTypeDay(session, trySlot.day);
 
-          subjectDayMap[dayKey].add(trySlot.day);
+        if (backtrack(queueIndex + 1)) return true;
 
-          if (backtrack(queueIndex + 1)) return true;
+        // =============================================
+        // ↩️ UNDO
+        // =============================================
+        timetable.pop();
 
-          // ↩️ UNDO
-          timetable.pop();
-          roomBusy[selectedRoom.id + "_" + trySlot._id] = false;
-          session.teachers.forEach(t => {
-            teacherBusy[t.id + "_" + trySlot._id] = false;
-          });
-          session.sections.forEach(sec => {
-            sectionBusy[sec.id + "_" + trySlot._id] = false;
-          });
-          gapSetFor.forEach(secId => {
-            delete sectionGapUsed[secId][trySlot.day];
-          });
-          subjectDayMap[dayKey].delete(trySlot.day);
-        }
+        roomBusy[selectedRoom.id + "_" + trySlot._id] = false;
+
+        session.teachers.forEach(t => {
+          teacherBusy[t.id + "_" + trySlot._id] = false;
+        });
+
+        session.sections.forEach(sec => {
+          sectionBusy[sec.id + "_" + trySlot._id] = false;
+        });
+
+        gapSetFor.forEach(secId => {
+          delete sectionGapUsed[secId][trySlot.day];
+        });
+
+        unmarkSubjectTypeDay(session, trySlot.day);
       }
     }
 
     return false;
   }
 
-  let success = backtrack(0);
-  const timeTaken = Date.now() - startTime;
+  const success   = backtrack(0);
+  const timeTaken = Date.now() - genStart;
 
-  // 🟢 SUCCESS
-  if (success) {
-    await Timetable.deleteMany({});
-    await Timetable.insertMany(timetable);
-    return {
-      status: "success",
-      message: "Timetable successfully generated",
-      timeTaken: timeTaken + "ms",
-      timetable,
-      failedSubjects: []
-    };
-  }
+  // =============================================
+  // SORT — Monday→Saturday, 9AM→last
+  // =============================================
+  const slotMap = {};
+  timeslots.forEach(slot => { slotMap[slot._id.toString()] = slot; });
 
-  // 🟡 TIMEOUT
-  if (timedOut) {
-    return {
-      status: "timeout",
-      message: "Timetable generation stopped — time limit (15s) reached. Try again.",
-      timeTaken: timeTaken + "ms",
-      timetable: [],
-      failedSubjects: []
-    };
-  }
-
-  // 🔴 FAILURE
-  let failedSubjects = [];
-  for (let session of queue) {
-    let totalStudents = session.sections.reduce((sum, sec) => sum + sec.strength, 0);
-    let reason = "";
-
-    if (session.teachers.length === 0) {
-      reason = "No teacher assigned";
-    } else if (session.sections.length === 0) {
-      reason = "No section assigned";
-    } else {
-      let teacherIssue = false;
-      let roomIssue = false;
-      for (let slot of timeslots) {
-        let teacherFree = session.teachers.every(t => !teacherBusy[t.id + "_" + slot._id]);
-        let roomAvailable = rooms.some(r =>
-          r.capacity >= totalStudents && !roomBusy[r.id + "_" + slot._id]
-        );
-        if (!teacherFree) teacherIssue = true;
-        if (!roomAvailable) roomIssue = true;
+  function sortTimetable(entries) {
+    return [...entries].sort((a, b) => {
+      const slotA = slotMap[a.timeslot.toString()];
+      const slotB = slotMap[b.timeslot.toString()];
+      if (!slotA || !slotB) return 0;
+      if (dayOrder[slotA.day] !== dayOrder[slotB.day]) {
+        return dayOrder[slotA.day] - dayOrder[slotB.day];
       }
-      if (teacherIssue && roomIssue) reason = "Teacher + Room unavailable";
-      else if (teacherIssue) reason = "Teacher busy all slots";
-      else if (roomIssue) reason = "Room capacity / availability issue";
-      else reason = "Gap limit / slot distribution issue";
-    }
-
-    failedSubjects.push({
-      subject: session.name,
-      requiredPerWeek: session.weeklyFrequency,
-      reason
+      return slotA.startTime.localeCompare(slotB.startTime);
     });
   }
 
+  // =============================================
+  // FAILURE DIAGNOSIS
+  // =============================================
+  function diagnoseFailures(sessionsToCheck) {
+    const failedSubjects = [];
+    for (const session of sessionsToCheck) {
+      const totalStudents = session.sections.reduce((sum, sec) => sum + sec.strength, 0);
+      let reason = "";
+
+      if (session.teachers.length === 0) {
+        reason = "No teacher assigned";
+      } else if (session.sections.length === 0) {
+        reason = "No section assigned";
+      } else {
+        let teacherIssue = false;
+        let roomIssue    = false;
+
+        for (const slot of timeslots) {
+          const teacherFree = session.teachers.every(t =>
+            !teacherBusy[t.id + "_" + slot._id]
+          );
+          const roomAvailable = rooms.some(r =>
+            r.capacity >= totalStudents &&
+            !roomBusy[r.id + "_" + slot._id]
+          );
+          if (!teacherFree)   teacherIssue = true;
+          if (!roomAvailable) roomIssue    = true;
+        }
+
+        if (teacherIssue && roomIssue) reason = "Teacher + Room unavailable";
+        else if (teacherIssue)         reason = "Teacher busy all slots";
+        else if (roomIssue)            reason = "Room capacity / availability issue";
+        else                           reason = "Gap limit / slot distribution issue";
+      }
+
+      failedSubjects.push({
+        subject:         session.name,
+        requiredPerWeek: session.weeklyFrequency,
+        reason
+      });
+    }
+    return failedSubjects;
+  }
+
+  // =============================================
+  // 🟢 SUCCESS
+  // =============================================
+  if (success) {
+    const sorted = sortTimetable(timetable);
+    await Timetable.deleteMany({});
+    await Timetable.insertMany(sorted);
+    return {
+      status:         "success",
+      message:        "Timetable successfully generated",
+      timeTaken:      timeTaken + "ms",
+      timetable:      sorted,
+      failedSubjects: []
+    };
+  }
+
+  // =============================================
+  // 🟡 TIMEOUT — partial + failures
+  // =============================================
+  if (timedOut) {
+    const sorted = sortTimetable(timetable);
+    const scheduledIds  = new Set(timetable.map(e => e.subject.toString()));
+    const unscheduled   = queue.filter(s => !scheduledIds.has(s._id.toString()));
+    const failedSubjects = diagnoseFailures(unscheduled);
+
+    if (sorted.length > 0) {
+      await Timetable.deleteMany({});
+      await Timetable.insertMany(sorted);
+    }
+
+    return {
+      status:         "timeout",
+      message:        `Time limit (15s) reached. ${sorted.length} sessions scheduled, ${unscheduled.length} could not be placed.`,
+      timeTaken:      timeTaken + "ms",
+      timetable:      sorted,
+      failedSubjects
+    };
+  }
+
+  // =============================================
+  // 🔴 FAILURE
+  // =============================================
+  const failedSubjects = diagnoseFailures(queue);
   await Timetable.deleteMany({});
   return {
-    status: "failed",
-    message: "No valid timetable exists with current data.",
-    timeTaken: timeTaken + "ms",
-    timetable: [],
+    status:         "failed",
+    message:        "No valid timetable exists with current data.",
+    timeTaken:      timeTaken + "ms",
+    timetable:      [],
     failedSubjects
   };
 }
@@ -435,8 +551,8 @@ module.exports = { generateTimetable };
 
 //         // ROOM FILTER
 //         let validRooms = rooms.filter(r =>
-//           r.type === (session.type === "lab" ? "lab" : "classroom")
-//         );
+//   r.type === session.type
+// );
 
 //         validRooms.sort((a, b) => {
 //           if (a.building === b.building && a.floor === b.floor) {
@@ -869,3 +985,5 @@ module.exports = { generateTimetable };
 // }
 
 // module.exports = { generateTimetable };
+
+
